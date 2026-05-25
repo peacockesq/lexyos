@@ -259,10 +259,11 @@ async function decideSelectedGate(decision) {
 async function createFilingPacketFromMatter() {
   requireMatter();
   const documents = filingDocuments();
+  const filingPacketId = `filing_${state.selectedMatter.id}_${Date.now()}`;
   const result = await apiJson('/api/filing-packets', {
     method: 'POST',
     body: {
-      id: `filing_${state.selectedMatter.id}`,
+      id: filingPacketId,
       matterId: state.selectedMatter.id,
       jurisdiction: baselineValue('jurisdiction', 'CT'),
       filingType: 'QDRO filing',
@@ -298,10 +299,11 @@ async function searchCorpus() {
 
 async function prepareServicePacketFromMatter() {
   requireMatter();
+  const servicePacketId = `service_${state.selectedMatter.id}_${Date.now()}`;
   const result = await apiJson('/api/service-packets', {
     method: 'POST',
     body: {
-      id: `service_${state.selectedMatter.id}`,
+      id: servicePacketId,
       matterId: state.selectedMatter.id,
       recipient: baselineValue('plan_admin_tpa', 'Plan Administrator'),
       requirement: { id: 'plan-admin-mail', method: 'mail', requiredDocuments: ['notice'] },

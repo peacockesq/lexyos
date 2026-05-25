@@ -43,6 +43,13 @@ test('workflow actions promote their newly created approval gate to the selected
   }
 });
 
+test('filing and service packet retries use fresh packet ids instead of overwriting rejected gates', () => {
+  assert.doesNotMatch(appSource, /id:\s*`filing_\$\{state\.selectedMatter\.id\}`/, 'filing retry must not reuse the same packet/gate id after a rejection');
+  assert.doesNotMatch(appSource, /id:\s*`service_\$\{state\.selectedMatter\.id\}`/, 'service retry must not reuse the same packet/gate id after a rejection');
+  assert.match(appSource, /const filingPacketId = `filing_\$\{state\.selectedMatter\.id\}_\$\{Date\.now\(\)\}`/, 'filing retry should create a fresh packet id');
+  assert.match(appSource, /const servicePacketId = `service_\$\{state\.selectedMatter\.id\}_\$\{Date\.now\(\)\}`/, 'service retry should create a fresh packet id');
+});
+
 test('cockpit exposes controls and panels for document gates, filing, service, corpus, errors, and audit trail', () => {
   for (const id of [
     'generate-doc',
