@@ -82,19 +82,21 @@ test('Seven shell exposes Mike-style cockpit regions with Lexy semantics', () =>
   }
 });
 
-test('Seven design language includes Skittles color system and glass cockpit surfaces', () => {
+test('LexyUI design language uses white brand kit with product-specific accents', () => {
   for (const token of [
-    '--skittle-red',
-    '--skittle-yellow',
-    '--skittle-green',
-    '--skittle-blue',
-    '--skittle-purple',
-    '--seven-glow',
-    'linear-gradient(135deg',
-    'backdrop-filter',
+    'color-scheme: light',
+    '--surface: #ffffff',
+    '--text: #172033',
+    '--muted: #8090a3',
+    '--product-atlas',
+    '--product-calculators',
+    '--product-qdro',
+    '--product-filing',
+    '--product-sign',
   ]) {
-    assert.match(cssSource, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing design token ${token}`);
+    assert.match(cssSource, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing LexyUI design token ${token}`);
   }
+  assert.doesNotMatch(cssSource, /--seven-glow|backdrop-filter|conic-gradient/, 'neon/glass cockpit styling should not be present in LexyUI');
 });
 
 test('browser app renders matter metrics and API receipts in the shell', () => {
