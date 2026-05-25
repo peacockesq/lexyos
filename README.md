@@ -24,6 +24,7 @@ No Mike/PIP code is copied. This is a separate shell designed around Peacock's a
 npm ci
 npm run reset:data
 npm test
+npm run test:e2e:local
 npm run smoke:http
 npm start
 # open http://localhost:5174/
@@ -53,7 +54,7 @@ The Compose file defaults to the local storage adapter. Hosted deployments can s
 
 Workflows are included under `.github/workflows/`:
 
-- `ci.yml` runs Node tests, the HTTP smoke test, Docker build/container smoke, and a Playwright cockpit smoke when browser dependencies install successfully.
+- `ci.yml` runs Node tests, the HTTP smoke test, Docker build/container smoke, and a full Playwright matter-cockpit E2E run (`npm run test:e2e:local`) with proof screenshots/results uploaded as GitHub Actions artifacts.
 - `deploy-hetzner.yml` is a manual `workflow_dispatch` deploy to lexy-hetzner-01 (`37.27.49.209`) using the existing VPS + Docker Compose path. It requires `HETZNER_SSH_KEY` and optionally `HETZNER_SSH_USER` as GitHub environment/repository configuration; it does not store secrets in the repo.
 
 ## Hetzner staging/live runtime

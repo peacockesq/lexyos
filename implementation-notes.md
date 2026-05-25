@@ -123,6 +123,15 @@ Unknown scalar fields are preserved into `baseline` so NocoDB/Airtable/Lawmatics
 - Receipts added to docs: README now documents OSS/local vs hosted product mode, Docker Compose, storage adapter env vars, GitHub Actions, and Hetzner deployment prerequisites. `scripts/http-smoke.mjs` verifies health, auth boundary, seeded matters, and selected-matter file listing against a temp JSON data path.
 - Safety: no client contacts, no law-firm legal file mutation, no live Drive folder IDs/tokens committed.
 
+## Playwright matter cockpit E2E — 2026-05-25
+- Product decision: E2E proof is now first-class Node Playwright, not only API smoke or a Python screenshot harness. `playwright.config.mjs` starts local LexyOS when `LEXYOS_BASE_URL` is absent and targets supplied staging/live URLs when it is present.
+- Coverage: `tests/e2e/matter-cockpit.spec.mjs` creates an isolated proof matter through the API, drives the cockpit with semantic locators, selects the matter, lists scoped files, renders a document artifact, approves and rejects gates, submits a filing, verifies supported and refused corpus answers, sends service, uploads proof, and asserts the visible audit trail.
+- UI hardening: the audit trail now displays the latest 24 scoped events so the full browser lifecycle still shows the early `document.artifact.rendered` event after filing, corpus, service, and proof events.
+- CI wiring: `.github/workflows/ci.yml` now runs `npm run test:e2e:local` with `@playwright/test` and uploads `proof/matter-cockpit-local.png`, `proof/playwright-results.json`, `proof/playwright-report`, and `proof/playwright-artifacts`.
+- RED receipt: the new Playwright spec initially failed on the prior local UI because the 12-event audit window dropped `document.artifact.rendered` after the full lifecycle run; after increasing the audit window, `npm run test:e2e:local` passes 1/1 and writes `proof/matter-cockpit-local.png`.
+- Pre-deploy staging receipt: running `npm run test:e2e:staging` against old `http://37.27.49.209:5174` failed on the stale deployed build after filing reject/recreate because the remote cockpit had not yet received this branch.
+- Local proof receipts: `/tmp/lexyos-pr` at commit `fc6b7a3` ran `npm test` (64/64 pass) and `npm run test:e2e:local` (1/1 pass). GitHub PR #6 checks passed: Node tests and HTTP smoke, Docker image smoke, and Playwright matter cockpit E2E.
+
 ## Open integration decisions
 - Confirm exact no-code DB: NocoDB vs Airtable vs Twenty/Apiary table.
 - Confirm whether folder IDs should be written back to the DB by LexyOS or remain owned by the existing automation.
