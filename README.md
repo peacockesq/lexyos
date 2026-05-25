@@ -56,6 +56,20 @@ Workflows are included under `.github/workflows/`:
 - `ci.yml` runs Node tests, the HTTP smoke test, Docker build/container smoke, and a Playwright cockpit smoke when browser dependencies install successfully.
 - `deploy-hetzner.yml` is a manual `workflow_dispatch` deploy to lexy-hetzner-01 (`37.27.49.209`) using the existing VPS + Docker Compose path. It requires `HETZNER_SSH_KEY` and optionally `HETZNER_SSH_USER` as GitHub environment/repository configuration; it does not store secrets in the repo.
 
+## Hetzner staging/live runtime
+
+Current lexy-hetzner-01 deployment receipt (2026-05-25):
+
+- Host: `lexy-hetzner-01` / `37.27.49.209`.
+- Deployed source: `peacockesq/lexyos` `main` at `1bed282ba77ecc61559c07775319f1d5af58e35d`.
+- Staging: `/opt/lexyos-staging`, Compose project `lexyos-staging`, data volume `lexyos-staging_lexyos-data`, UI `http://37.27.49.209:5174/`, health `http://37.27.49.209:5174/api/health`, API `http://37.27.49.209:5174/api/matters`.
+- Live: `/opt/lexyos-live`, Compose project `lexyos-live`, data volume `lexyos-live_lexyos-data`, UI `http://37.27.49.209:5175/`, health `http://37.27.49.209:5175/api/health`, API `http://37.27.49.209:5175/api/matters`.
+- Health proof: both deployments returned `{ "status": "ok", "dataPath": "/app/data/lexyos.json", "product": "LexyOS local backend" }`; UI title is `LexyOS Matter Cockpit`; authenticated `/api/matters` returned HTTP 200.
+- Persistence proof: proof matters `PROOF-staging-20260525T192344Z` and `PROOF-live-20260525T192344Z` were created through the API, each remained visible after `docker compose -p <project> restart lexyos`.
+- Rollback pattern: `ssh root@37.27.49.209 'cd /opt/lexyos-staging && git reset --hard <previous_sha> && docker compose -p lexyos-staging up -d --build --force-recreate lexyos'` and the same command under `/opt/lexyos-live` with `-p lexyos-live`.
+
+DNS/proxy gap: no LexyOS-specific Caddy/DNS hostname was present during this deploy pass, so the verified routes are direct HTTP port routes. Add DNS/Caddy hostnames later without changing the app/container contract.
+
 ## Storage providers
 
 LexyOS storage is adapter-driven so the same matter/file workflow can run as OSS/local software or as a hosted product.
