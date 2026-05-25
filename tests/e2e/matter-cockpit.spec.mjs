@@ -90,7 +90,12 @@ test.describe('LexyOS matter cockpit workflow', () => {
     await expect(page.locator('#ops-panel')).toContainText('blocked');
 
     await page.getByRole('button', { name: 'Prepare filing packet' }).click();
+    await expectPanelJson(page.locator('#research-panel'), (json) => json.gate?.type === 'filing_approval' && json.gate?.status === 'pending' && json.gate?.id?.includes(matterId), 'retry filing gate should be pending before approval');
+    const retryFilingGateId = await page.locator('#research-panel').evaluate((el) => JSON.parse(el.textContent).gate.id);
+    await page.getByRole('button', { name: new RegExp(retryFilingGateId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) }).click();
     await page.getByRole('button', { name: 'Approve selected gate' }).click();
+    await expect(page.locator('#research-panel')).toContainText(retryFilingGateId);
+    await expect(page.locator('#research-panel')).toContainText('approved');
     await page.getByRole('button', { name: 'Submit approved filing' }).click();
     await expect(page.locator('#research-panel')).toContainText(`manual-filing_${matterId}`);
     await expect(page.locator('#research-panel')).toContainText('submitted');
@@ -114,7 +119,12 @@ test.describe('LexyOS matter cockpit workflow', () => {
 
     await page.getByRole('button', { name: 'Prepare service packet' }).click();
     await expect(page.locator('#gate-list')).toContainText('service_approval');
+    await expectPanelJson(page.locator('#research-panel'), (json) => json.gate?.type === 'service_approval' && json.gate?.status === 'pending' && json.gate?.id?.includes(matterId), 'service gate should be pending before approval');
+    const serviceGateId = await page.locator('#research-panel').evaluate((el) => JSON.parse(el.textContent).gate.id);
+    await page.getByRole('button', { name: new RegExp(serviceGateId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) }).click();
     await page.getByRole('button', { name: 'Approve selected gate' }).click();
+    await expect(page.locator('#research-panel')).toContainText(serviceGateId);
+    await expect(page.locator('#research-panel')).toContainText('approved');
     await page.getByRole('button', { name: 'Send approved service' }).click();
     await expect(page.locator('#research-panel')).toContainText('LOCAL-');
     await page.getByRole('button', { name: 'Upload proof of service' }).click();
