@@ -1,0 +1,17 @@
+{
+  "name": "lexyos",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "description": "Clean-room, matter-centered LexyOS legal document cockpit for OSS/local and hosted product deployments.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "start": "node src/server.mjs",
+    "reset:data": "node scripts/reset-data.mjs",
+    "smoke:http": "node scripts/http-smoke.mjs"
+  }
+}
