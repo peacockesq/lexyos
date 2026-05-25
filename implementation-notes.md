@@ -108,6 +108,14 @@ Unknown scalar fields are preserved into `baseline` so NocoDB/Airtable/Lawmatics
 ## Remaining product gaps
 - Live Google Drive/no-code DB credentials are deployment-time env values, not OSS defaults. The storage provider boundary is implemented and tested; a hosted deployment still needs `LEXYOS_DRIVE_ROOT_FOLDER_ID` injected on Hetzner and a GOG-compatible Drive command surface available at runtime.
 
+## Playwright matter cockpit E2E verification — 2026-05-25
+- Scope verified: app load, selected matter, Drive/local file listing, persistent QDRO artifact generation, approve/reject gate flow, filing prepare/approve/submit, Lexy Corpus supported answer and unsupported refusal, service prepare/approve/send/proof lifecycle, and audit trail events.
+- Regression fixed during verification: filing/service prepare actions now use fresh packet IDs (`filing_<matterId>_<Date.now()>` and `service_<matterId>_<Date.now()>`) so a rejected gate cannot poison a retry. PR #8 merged after CI passed.
+- Test stabilization: the Playwright E2E now waits for pending gate JSON and selects the newly-created gate card by accessible button text before approval; no `waitForTimeout` hacks. PR #10 merged after CI passed.
+- Local receipts from `/tmp/lexyos-e2e-verify`: `npm test` passed 65/65; `npm run smoke:http` passed; `npm run test:e2e:local` passed 1/1 and wrote `proof/matter-cockpit-local.png` plus `proof/playwright-results.json`.
+- Hetzner deploy receipt: both `/opt/lexyos-staging` and `/opt/lexyos-live` fast-forwarded to `8260d69905da7c7e1ae92d3f325d65861e9d9698`; Docker Compose rebuilt/recreated `lexyos-staging-lexyos-1` and `lexyos-live-lexyos-1`; both `/api/health` routes returned `status=ok` with `/app/data/lexyos.json`.
+- Remote Playwright receipts: `npm run test:e2e:staging` passed 1/1 against `http://37.27.49.209:5174` and wrote `proof/matter-cockpit-staging.png`; `npm run test:e2e:live` passed 1/1 against `http://37.27.49.209:5175` and wrote `proof/matter-cockpit-live.png`.
+
 ## Google Drive universal storage adapter — 2026-05-25
 - Product decision: Google Drive is now treated as a universal storage adapter, not a local-build blocker. `createMatterStorageAdapter` can select `mock`, `local`, or `google_drive` providers; `createLexyProductServer` accepts an injectable `storageAdapter` and defaults to local JSON-backed files for runnable OSS/product dev.
 - Scope guard: selected-matter-only file scoping is enforced at the adapter and HTTP API boundary. Drive list/download/upload calls use the matter folder ID and do not fall back to the root folder; missing folders return explicit blocked/no-op responses.
