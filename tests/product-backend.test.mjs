@@ -125,6 +125,10 @@ test('HTTP file endpoints use selected-matter storage adapter scope and fallback
       calls.push(['upload', matter.id, matter.driveFolderId, file.name]);
       return { ok: false, reason: 'upload_adapter_not_configured' };
     },
+    requestDownload: async ({ matter, fileId }) => {
+      calls.push(['download', matter.id, matter.driveFolderId, fileId]);
+      return { ok: true, fileId, content: 'drive-bytes', file: { id: fileId, name: 'Drive Q1.pdf' } };
+    },
   };
   const seed = {
     users: [{ id: 'local-owner', email: 'local-owner@lexyos.test', memberships: [{ tenantId: 'peacock', roles: ['owner'], globalMatterAccess: true }] }],
@@ -152,7 +156,11 @@ test('HTTP file endpoints use selected-matter storage adapter scope and fallback
   const upload = await request('/api/matters/Q-1/files', { method: 'POST', body: { name: 'New.pdf' } });
   assert.equal(upload.status, 503);
   assert.equal(upload.body.error, 'upload_adapter_not_configured');
-  assert.deepEqual(calls, [['list', 'Q-1', 'folder-q1'], ['upload', 'Q-1', 'folder-q1', 'New.pdf']]);
+
+  const download = await request('/api/matters/Q-1/files/download?fileId=drive-q1-doc');
+  assert.equal(download.status, 200);
+  assert.equal(download.body.content, 'drive-bytes');
+  assert.deepEqual(calls, [['list', 'Q-1', 'folder-q1'], ['upload', 'Q-1', 'folder-q1', 'New.pdf'], ['download', 'Q-1', 'folder-q1', 'drive-q1-doc']]);
 });
 
 test('backend exposes filing, corpus refusal, and service/proof lifecycles over API', async (t) => {

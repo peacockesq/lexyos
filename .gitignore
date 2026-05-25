@@ -5,7 +5,7 @@ npm-debug.log*
 .env.*
 !.env.example
 data/lexyos.json
-proof/*.png
+proof/
 playwright-report/
 test-results/
 coverage/

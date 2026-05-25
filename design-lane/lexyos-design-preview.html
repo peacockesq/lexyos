@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LexyOS Design System Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=EB+Garamond:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #070910;
+      --bg-radial: radial-gradient(circle at 18% 8%, rgba(68,220,255,.20), transparent 32%),
+                   radial-gradient(circle at 92% 12%, rgba(255,91,179,.22), transparent 30%),
+                   linear-gradient(135deg, #070910 0%, #101521 48%, #05060a 100%);
+      --panel: rgba(15,22,34,.78);
+      --panel-2: rgba(23,32,48,.84);
+      --panel-3: rgba(255,255,255,.06);
+      --line: rgba(165,196,255,.16);
+      --line-strong: rgba(165,196,255,.28);
+      --text: #f5f8ff;
+      --muted: #aab6ca;
+
+      /* Lexy Skittles — warm, vibrant, distinct from Mike */
+      --skittle-red: #ff4d6d;
+      --skittle-yellow: #ffe66d;
+      --skittle-green: #2dd4bf;
+      --skittle-blue: #60a5fa;
+      --skittle-purple: #c084fc;
+      --skittle-amber: #fbbf24;
+
+      /* Semantic roles */
+      --danger: #ff4d6d;
+      --warning: #fbbf24;
+      --success: #2dd4bf;
+      --info: #60a5fa;
+      --accent: #c084fc;
+      --primary: #7dd3fc;
+      --surface: rgba(15,22,34,.78);
+      --surface-raised: rgba(23,32,48,.84);
+
+      --seven-glow: 0 24px 80px rgba(96,165,250,.18), inset 0 1px 0 rgba(255,255,255,.08);
+      --radius-sm: 14px;
+      --radius-md: 18px;
+      --radius-lg: 28px;
+    }
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg-radial);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+    body::before {
+      content: "";
+      position: fixed; inset: 0; pointer-events: none;
+      background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.028) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: linear-gradient(to bottom, rgba(0,0,0,.75), transparent 80%);
+    }
+
+    .shell {
+      display: grid;
+      grid-template-columns: 280px 330px minmax(520px, 1fr) 360px;
+      gap: 14px;
+      height: 100vh;
+      padding: 14px;
+      overflow: hidden;
+    }
+    .shell-card {
+      min-width: 0; min-height: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      background: var(--panel);
+      box-shadow: var(--seven-glow);
+      backdrop-filter: blur(22px) saturate(140%);
+      -webkit-backdrop-filter: blur(22px) saturate(140%);
+      overflow: auto;
+      padding: 18px;
+    }
+    .lexy-nav, .files-panel, .agent-rail { padding: 18px; }
+    .files-panel { background: linear-gradient(180deg, rgba(16,24,39,.90), rgba(13,19,31,.78)); }
+    .document-workspace {
+      padding: 22px;
+      background: linear-gradient(180deg, rgba(9,14,26,.82), rgba(8,10,18,.90));
+      display: flex; flex-direction: column;
+    }
+
+    /* Brand */
+    .brand-stack { display: flex; align-items: center; gap: 12px; margin-bottom: 26px; }
+    .brand-orb {
+      display: grid; place-items: center;
+      width: 46px; height: 46px; border-radius: 16px;
+      color: #061018; font-weight: 950;
+      background: conic-gradient(from 210deg, var(--skittle-red), var(--skittle-yellow), var(--skittle-green), var(--skittle-blue), var(--skittle-purple), var(--skittle-red));
+      box-shadow: 0 0 36px rgba(192,132,252,.36);
+      font-family: Inter, sans-serif;
+    }
+    .brand { font-size: 25px; font-weight: 900; letter-spacing: -0.05em; line-height: 1; }
+    .brand-subtitle, .panel-kicker, .search-label, h2, h3 {
+      color: var(--muted);
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.14em;
+    }
+    .panel-kicker { color: var(--skittle-green); margin-bottom: 6px; }
+    h1 { letter-spacing: -0.055em; margin: 0; font-size: clamp(32px, 4vw, 54px); }
+    h2 { margin: 24px 0 10px; }
+    h3 { margin: 18px 0 8px; }
+
+    /* Inputs */
+    input, textarea {
+      width: 100%;
+      background: rgba(7,11,19,.76);
+      border: 1px solid var(--line-strong);
+      color: var(--text);
+      border-radius: 16px;
+      padding: 12px 14px;
+      outline: none;
+      font-family: inherit;
+    }
+    input:focus, textarea:focus { border-color: var(--skittle-blue); box-shadow: 0 0 0 3px rgba(96,165,250,.16); }
+    textarea { min-height: 118px; resize: vertical; margin-bottom: 12px; }
+
+    /* Buttons */
+    button { cursor: pointer; color: var(--text); font: inherit; }
+    .btn {
+      width: 100%;
+      border: 1px solid rgba(255,255,255,.10);
+      background: linear-gradient(135deg, rgba(96,165,250,.95), rgba(45,212,191,.86));
+      color: #031018;
+      border-radius: 16px;
+      padding: 12px;
+      font-weight: 850;
+      box-shadow: 0 12px 28px rgba(45,212,191,.13);
+      transition: transform .12s ease, box-shadow .12s ease;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn-success { background: linear-gradient(135deg, var(--skittle-green), var(--skittle-yellow)); }
+    .btn-danger { background: linear-gradient(135deg, rgba(255,77,109,.24), rgba(59,13,19,.92)); color: #fecdd3; }
+    .btn-accent { background: linear-gradient(135deg, var(--skittle-purple), var(--skittle-blue)); color: #f8fbff; }
+    .btn-muted { background: rgba(255,255,255,.08); color: var(--muted); border-color: var(--line); }
+
+    /* Lists / Cards */
+    .matter-list, .file-list { display: grid; gap: 10px; margin-top: 14px; }
+    .matter-card, .file-card {
+      width: 100%; text-align: left;
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      padding: 13px;
+      transition: transform .16s ease, border-color .16s ease, background .16s ease;
+      cursor: pointer;
+    }
+    .matter-card:hover, .file-card:hover { transform: translateY(-1px); border-color: var(--line-strong); background: rgba(30,43,64,.90); }
+    .matter-card.selected, .file-card.selected {
+      border-color: var(--skittle-blue);
+      box-shadow: 0 0 0 1px rgba(96,165,250,.35) inset, 0 0 24px rgba(96,165,250,.14);
+    }
+    .matter-card span, .file-card span { display: block; color: var(--muted); margin-top: 5px; font-size: 12px; }
+
+    .folder-status { color: var(--success); font-size: 12px; line-height: 1.45; margin-bottom: 12px; }
+    .baseline-panel { display: grid; gap: 8px; }
+    .baseline-row { border: 1px solid var(--line); border-radius: 14px; padding: 10px; background: rgba(255,255,255,.035); }
+    .baseline-row span { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+    .baseline-row strong { font-size: 14px; }
+
+    /* Workspace */
+    .workspace-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 16px; }
+    .pill {
+      border: 1px solid var(--line); border-radius: 999px;
+      padding: 9px 13px; color: var(--muted); font-size: 12px;
+      background: var(--panel-3); white-space: nowrap;
+    }
+    .metric-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 0 0 14px; }
+    .metric-card { border: 1px solid var(--line); border-radius: 18px; padding: 12px; background: rgba(255,255,255,.045); }
+    .metric-card span { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .12em; }
+    .metric-card strong { display: block; margin-top: 6px; font-size: 22px; }
+    .cockpit-controls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0 0 16px; }
+    .document-frame {
+      min-height: 0;
+      flex: 1;
+      border: 1px solid rgba(15,23,42,.20);
+      border-radius: 26px;
+      background: linear-gradient(180deg, #fffdf7, #eef4ff);
+      color: #101827;
+      padding: clamp(24px, 4vw, 48px);
+      box-shadow: 0 24px 90px rgba(0,0,0,.38);
+      overflow: auto;
+    }
+    .doc-title { font-weight: 900; font-size: 30px; margin-bottom: 22px; letter-spacing: -.03em; font-family: "EB Garamond", Georgia, serif; }
+    .doc-body { font-family: "EB Garamond", Georgia, serif; font-size: 18px; line-height: 1.65; }
+    blockquote { border-left: 5px solid #2563eb; padding-left: 16px; color: #1f2937; font-size: 18px; line-height: 1.65; }
+
+    /* Badges / Chips */
+    .badge { display: inline-flex; align-items: center; gap: 6px;
+      border-radius: 999px; padding: 5px 10px; font-size: 12px; font-weight: 700;
+      border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.08);
+    }
+    .badge--pending   { border-color: rgba(251,191,36,.35); background: rgba(251,191,36,.12); color: #fef3c7; }
+    .badge--approved  { border-color: rgba(45,212,191,.35); background: rgba(45,212,191,.12); color: #d1fae5; }
+    .badge--rejected  { border-color: rgba(255,77,109,.35); background: rgba(255,77,109,.12); color: #fecdd3; }
+    .badge--blocked   { border-color: rgba(251,191,36,.35); background: rgba(251,191,36,.12); color: #fef3c7; }
+
+    /* Gate / Approval chips */
+    .gate-chip { display: flex; align-items: center; justify-content: space-between;
+      border-radius: var(--radius-md); padding: 12px 14px;
+      border: 1px solid var(--line);
+      background: linear-gradient(135deg, rgba(96,165,250,.10), rgba(192,132,252,.10));
+    }
+    .gate-chip__label { font-weight: 700; font-size: 14px; }
+    .gate-chip__meta  { color: var(--muted); font-size: 12px; }
+
+    /* Status timeline */
+    .status-timeline { display: flex; flex-direction: column; gap: 10px; }
+    .status-step { display: flex; align-items: center; gap: 12px; }
+    .status-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .status-dot--done   { background: var(--skittle-green); box-shadow: 0 0 8px rgba(45,212,191,.5); }
+    .status-dot--active { background: var(--skittle-blue); box-shadow: 0 0 8px rgba(96,165,250,.5); }
+    .status-dot--future { background: var(--line-strong); }
+
+    /* Document artifact card */
+    .artifact-card {
+      border-radius: var(--radius-md);
+      border: 1px solid var(--line);
+      padding: 16px;
+      background: var(--panel-2);
+    }
+    .artifact-card__header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .artifact-card__title { font-weight: 700; font-size: 14px; }
+    .artifact-card__type  { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+
+    pre { white-space: pre-wrap; word-break: break-word; background: rgba(6,10,18,.88); border: 1px solid var(--line); border-radius: 14px; padding: 12px; color: #cfe2ff; font-size: 12px; max-height: 270px; overflow: auto; }
+    .proposal { color: #d1fae5; }
+    .api-receipt-list { display: flex; flex-wrap: wrap; gap: 7px; }
+    .api-receipt { border: 1px solid var(--line); border-radius: 999px; padding: 6px 9px; font-size: 11px; color: #dbeafe; background: rgba(96,165,250,.10); }
+    .empty { color: var(--muted); border: 1px dashed var(--line-strong); border-radius: 16px; padding: 16px; background: rgba(255,255,255,.035); }
+
+    /* Responsive */
+    @media (max-width: 1390px) {
+      .shell { grid-template-columns: 250px 290px minmax(460px, 1fr); grid-template-rows: minmax(0, 1fr) 360px; }
+      .agent-rail { grid-column: 1 / -1; }
+      .metric-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 1024px) {
+      .shell { height: auto; min-height: 100vh; overflow: visible; grid-template-columns: 270px minmax(0, 1fr); grid-template-rows: auto; }
+      .files-panel { grid-column: 1; }
+      .document-workspace { grid-column: 2; grid-row: 1 / span 2; }
+      .agent-rail { grid-column: 1 / -1; }
+      .cockpit-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 640px) {
+      .shell { grid-template-columns: 1fr; grid-template-rows: auto; }
+      .lexy-nav, .files-panel, .document-workspace, .agent-rail { grid-column: 1; }
+      .cockpit-controls { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<main class="shell" aria-label="LexyOS Seven matter shell">
+
+  <!-- LEFT NAV -->
+  <aside class="lexy-nav shell-card" aria-label="Matter navigation">
+    <div class="brand-stack">
+      <div class="brand-orb" aria-hidden="true">L7</div>
+      <div>
+        <div class="brand">LexyOS</div>
+        <div class="brand-subtitle">Seven matter command</div>
+      </div>
+    </div>
+    <label class="search-label" for="matter-search">Matter search</label>
+    <input id="matter-search" placeholder="Search client, plan, stage…" autocomplete="off" />
+
+    <h2 style="margin-top:24px">Active Matters</h2>
+    <div class="matter-list">
+      <div class="matter-card selected">
+        <strong>Smith — QDRO</strong>
+        <span>Q-2026-001 · plan_submitted_to_plan</span>
+        <span class="badge badge--approved" style="margin-top:8px">approved</span>
+      </div>
+      <div class="matter-card">
+        <strong>Jones — Estate Plan</strong>
+        <span>EP-2026-002 · intake</span>
+        <span class="badge badge--pending" style="margin-top:8px">pending</span>
+      </div>
+    </div>
+
+    <h2>Audit Trail</h2>
+    <pre>Last 3 events: gate approved, document generated, filing prepared</pre>
+  </aside>
+
+  <!-- FILES / BASELINE -->
+  <aside class="files-panel shell-card" aria-label="Matter files and baseline">
+    <div class="panel-kicker">Matter baseline</div>
+    <h2>Drive-scoped Files</h2>
+    <div class="folder-status">Drive folder: 1xABC...</div>
+    <div class="file-list">
+      <div class="file-card selected"><strong>Judgment.pdf</strong><span>pdf</span></div>
+      <div class="file-card"><strong>MSA.docx</strong><span>docx</span></div>
+      <div class="file-card"><strong>Plan Procedures.pdf</strong><span>pdf</span></div>
+    </div>
+
+    <h2>Baseline Data</h2>
+    <div class="baseline-panel">
+      <div class="baseline-row"><span>Plan Name</span><strong>IBM Retirement Plan</strong></div>
+      <div class="baseline-row"><span>Jurisdiction</span><strong>CT</strong></div>
+      <div class="baseline-row"><span>Case Number</span><strong>FA-2026-000001</strong></div>
+    </div>
+
+    <h2>Stage Timeline</h2>
+    <div class="status-timeline">
+      <div class="status-step"><div class="status-dot status-dot--done"></div><span>Intake</span></div>
+      <div class="status-step"><div class="status-dot status-dot--done"></div><span>Drafting</span></div>
+      <div class="status-step"><div class="status-dot status-dot--active"></div><span>Attorney Review</span></div>
+      <div class="status-step"><div class="status-dot status-dot--future"></div><span>Filing</span></div>
+    </div>
+  </aside>
+
+  <!-- DOCUMENT WORKSPACE -->
+  <section class="document-workspace shell-card" aria-label="Document workspace">
+    <div class="workspace-header">
+      <div>
+        <div class="panel-kicker">Live API cockpit</div>
+        <h1>Document Workspace</h1>
+      </div>
+      <div class="pill">API-backed · persistent · attorney gates</div>
+    </div>
+
+    <div class="metric-strip" aria-label="Matter health metrics">
+      <div class="metric-card"><span>Matter health</span><strong>76%</strong></div>
+      <div class="metric-card"><span>API files</span><strong>3</strong></div>
+      <div class="metric-card"><span>Pending gates</span><strong>1</strong></div>
+      <div class="metric-card"><span>Live endpoints</span><strong>14</strong></div>
+    </div>
+
+    <div class="cockpit-controls" aria-label="Cockpit controls">
+      <button class="btn">Generate persistent QDRO artifact</button>
+      <button class="btn btn-success">Approve selected gate</button>
+      <button class="btn btn-danger">Reject selected gate</button>
+      <button class="btn btn-accent">Prepare filing packet</button>
+      <button class="btn">Prepare service packet</button>
+      <button class="btn btn-muted">Search Lexy Corpus</button>
+    </div>
+
+    <div class="document-frame">
+      <div class="doc-title">QDRO Draft — Smith v. Smith</div>
+      <div class="doc-body">
+        <p><strong>Alternate Payee:</strong> Jane Smith</p>
+        <p><strong>Participant:</strong> John Smith</p>
+        <p><strong>Plan:</strong> IBM Retirement Plan</p>
+        <blockquote>The Alternate Payee shall receive fifty percent of the marital portion accrued during the marriage date to the date the dissolution judgment is filed.</blockquote>
+        <p>The participant and alternate payee agree to the foregoing division of the marital portion as described in the judgment of dissolution dated May 15, 2026.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- AGENT RAIL -->
+  <aside class="agent-rail shell-card" aria-label="Agent and API rail">
+    <h2>Session / API</h2>
+    <pre>{ backend: "/api", selectedMatterId: "Q-2026-001" }</pre>
+
+    <h2>Active Endpoints</h2>
+    <div class="api-receipt-list">
+      <span class="api-receipt">/api/matters</span>
+      <span class="api-receipt">/api/tasks</span>
+      <span class="api-receipt">/api/gates</span>
+      <span class="api-receipt">/api/corpus/search</span>
+    </div>
+
+    <h2>Pending Gate</h2>
+    <div class="gate-chip" style="margin:10px 0">
+      <div>
+        <div class="gate-chip__label">Attorney Review</div>
+        <div class="gate-chip__meta">gate_docgen_Q-2026-001 · QDRO artifact</div>
+      </div>
+      <span class="badge badge--pending">pending</span>
+    </div>
+
+    <h2>Tasks</h2>
+    <div style="display:grid;gap:8px;margin-top:10px">
+      <div class="artifact-card">
+        <div class="artifact-card__header">
+          <span class="artifact-card__title">Attorney review generated QDRO artifact</span>
+          <span class="badge badge--pending">ready</span>
+        </div>
+      </div>
+      <div class="artifact-card">
+        <div class="artifact-card__header">
+          <span class="artifact-card__title">Prepare filing packet</span>
+          <span class="badge badge--approved">approved</span>
+        </div>
+      </div>
+    </div>
+
+    <h2>Eva / Research</h2>
+    <textarea placeholder="Ask Eva to review, draft, or propose a tracked edit…">Add survivor benefit language if missing.</textarea>
+    <button class="btn">Create tracked-change proposal</button>
+  </aside>
+
+</main>
+
+</body>
+</html>
