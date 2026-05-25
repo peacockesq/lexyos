@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'feat/**', 'fix/**', 'ci/**', 'docs/**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Node tests and HTTP smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run smoke:http
+
+  docker:
+    name: Docker image smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v3
+      - run: docker build -t lexyos:ci .
+      - name: Run container
+        run: |
+          docker run -d --name lexyos-ci -p 5174:5174 lexyos:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:5174/api/health; then exit 0; fi
+            sleep 1
+          done
+          docker logs lexyos-ci
+          exit 1
+      - name: Auth boundary smoke
+        run: |
+          test "$(curl -s -o /tmp/noauth.json -w '%{http_code}' http://127.0.0.1:5174/api/matters)" = "401"
+          curl -fsS -H 'x-lexyos-session-id: local-dev-owner' http://127.0.0.1:5174/api/matters | python -m json.tool
+      - if: always()
+        run: docker logs lexyos-ci || true
+
+  playwright:
+    name: Playwright cockpit smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: npm ci
+      - run: python -m pip install --upgrade pip playwright
+      - run: python -m playwright install --with-deps chromium
+      - name: Start LexyOS
+        run: |
+          LEXYOS_DATA_PATH="$RUNNER_TEMP/lexyos.json" PORT=5199 HOST=127.0.0.1 npm start > "$RUNNER_TEMP/lexyos.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/lexyos.pid"
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:5199/api/health; then exit 0; fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/lexyos.log"
+          exit 1
+      - run: LEXYOS_BASE_URL=http://127.0.0.1:5199 python scripts/ui-smoke-proof.py
+      - if: always()
+        run: |
+          cat "$RUNNER_TEMP/lexyos.log" || true
+          kill "$(cat "$RUNNER_TEMP/lexyos.pid")" 2>/dev/null || true
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lexyos-ui-smoke
+          path: proof/lexyos-ui-smoke.png
+          if-no-files-found: ignore

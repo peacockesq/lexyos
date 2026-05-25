@@ -1,0 +1,67 @@
+name: Deploy to Hetzner
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git ref to deploy
+        required: true
+        default: main
+      app_dir:
+        description: Absolute app directory on lexy-hetzner-01
+        required: true
+        default: /opt/lexyos
+      public_port:
+        description: Host port exposed by Docker Compose
+        required: true
+        default: '5174'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lexyos-hetzner-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy compose app to lexy-hetzner-01
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Check required secret
+        run: |
+          test -n "${{ secrets.HETZNER_SSH_KEY }}" || (echo 'Missing HETZNER_SSH_KEY repository/environment secret' && exit 1)
+      - name: Install SSH key
+        run: |
+          install -m 700 -d ~/.ssh
+          cat > ~/.ssh/lexyos_hetzner <<'KEY'
+          ${{ secrets.HETZNER_SSH_KEY }}
+          KEY
+          sed -i 's/^          //' ~/.ssh/lexyos_hetzner
+          chmod 600 ~/.ssh/lexyos_hetzner
+          ssh-keyscan -H 37.27.49.209 >> ~/.ssh/known_hosts
+      - name: Deploy
+        env:
+          DEPLOY_USER: ${{ vars.HETZNER_SSH_USER }}
+          APP_DIR: ${{ inputs.app_dir }}
+          DEPLOY_REF: ${{ inputs.ref }}
+          LEXYOS_PUBLIC_PORT: ${{ inputs.public_port }}
+        run: |
+          DEPLOY_USER="${DEPLOY_USER:-root}"
+          ssh -i ~/.ssh/lexyos_hetzner "$DEPLOY_USER@37.27.49.209" \
+            "APP_DIR='$APP_DIR' DEPLOY_REF='$DEPLOY_REF' LEXYOS_PUBLIC_PORT='$LEXYOS_PUBLIC_PORT' bash -s" <<'REMOTE'
+          set -euo pipefail
+          mkdir -p "$APP_DIR"
+          if [ ! -d "$APP_DIR/.git" ]; then
+            git clone https://github.com/peacockesq/lexyos.git "$APP_DIR"
+          fi
+          cd "$APP_DIR"
+          git fetch --all --prune
+          git checkout "$DEPLOY_REF"
+          git reset --hard "origin/$DEPLOY_REF" 2>/dev/null || git reset --hard "$DEPLOY_REF"
+          test -f .env || cp .env.example .env
+          LEXYOS_PUBLIC_PORT="$LEXYOS_PUBLIC_PORT" docker compose up -d --build
+          docker compose ps
+          curl -fsS "http://127.0.0.1:${LEXYOS_PUBLIC_PORT}/api/health"
+          REMOTE

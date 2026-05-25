@@ -1,0 +1,39 @@
+{
+  "storage": {
+    "defaultProvider": "local",
+    "ossSafeProvider": "mock",
+    "providers": {
+      "local": {
+        "enabled": true,
+        "description": "JSON/file-backed matter documents stored in the LexyOS data store. No external services required."
+      },
+      "mock": {
+        "enabled": true,
+        "description": "Safe no-op provider for OSS demos and tests when live storage is not configured."
+      },
+      "googleDrive": {
+        "enabled": false,
+        "accountAliasEnv": "LEXYOS_GOG_ACCOUNT",
+        "rootFolderIdEnv": "LEXYOS_DRIVE_ROOT_FOLDER_ID",
+        "folderPerMatter": true,
+        "description": "Live product adapter boundary through GOG/team Google Workspace. Do not commit Peacock-specific folder IDs."
+      }
+    }
+  },
+  "sources": {
+    "nocodb": {
+      "enabled": true,
+      "env": {
+        "baseUrl": "LEXY_NOCODB_BASE_URL",
+        "tableId": "LEXY_NOCODB_MATTERS_TABLE_ID",
+        "token": "LEXY_NOCODB_TOKEN"
+      }
+    },
+    "intakeWebhook": {
+      "enabled": true,
+      "env": {
+        "endpoint": "LEXY_INTAKE_MATTERS_ENDPOINT"
+      }
+    }
+  }
+}

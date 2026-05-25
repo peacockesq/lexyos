@@ -1,0 +1,59 @@
+{
+  "tenants": [
+    { "id": "peacock", "name": "Peacock Law / LexyOS Local" }
+  ],
+  "users": [
+    { "id": "local-owner", "email": "local-owner@lexyos.test", "displayName": "Local Owner", "memberships": [{ "tenantId": "peacock", "roles": ["owner"], "globalMatterAccess": true }] }
+  ],
+  "sessions": [
+    { "id": "local-dev-owner", "userId": "local-owner", "tenantId": "peacock", "provider": "local-dev" }
+  ],
+  "matters": [
+    {
+      "id": "Q-2026-001",
+      "matter_id": "Q-2026-001",
+      "tenantId": "peacock",
+      "client_display_name": "Jane Doe",
+      "matter_type": "QDRO",
+      "stage": "drafting",
+      "drive_folder_id": "drive-jane",
+      "baseline_data": {
+        "plan_name": "Fidelity 401(k)",
+        "case_number": "FA-2026-001",
+        "court_name": "Superior Court",
+        "jurisdiction": "CT",
+        "participant": "John Doe",
+        "alternate_payee": "Jane Doe"
+      }
+    },
+    {
+      "id": "INTAKE-2026-002",
+      "matter_id": "INTAKE-2026-002",
+      "tenantId": "peacock",
+      "client_display_name": "New Intake Client",
+      "matter_type": "QDRO",
+      "stage": "intake",
+      "baseline_data": {
+        "jurisdiction": "CT",
+        "county": "Fairfield",
+        "paid": false
+      }
+    }
+  ],
+  "documents": [
+    { "id": "file-jane-q1", "matterId": "Q-2026-001", "kind": "file", "name": "Draft QDRO.docx", "type": "qdro", "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document" },
+    { "id": "file-jane-judgment", "matterId": "Q-2026-001", "kind": "file", "name": "Judgment.pdf", "type": "judgment", "mimeType": "application/pdf" }
+  ],
+  "tasks": [
+    { "id": "task-intake-002-docs", "matterId": "INTAKE-2026-002", "title": "Collect plan document and judgment", "kind": "intake", "assignedTo": "agent", "status": "ready", "payload": {} }
+  ],
+  "gates": [],
+  "filingPackets": [],
+  "filingEvents": [],
+  "servicePackets": [],
+  "serviceEvents": [],
+  "corpusSources": [
+    { "id": "ct-qdro-memo", "title": "CT QDRO Firm Memo", "jurisdiction": "CT", "practiceArea": "family_qdro", "sourceType": "firm_memo", "visibility": "public", "text": "QDRO drafts require plan identity, judgment review, and attorney approval before filing." }
+  ],
+  "auditEvents": []
+}
