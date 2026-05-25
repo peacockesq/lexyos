@@ -12,6 +12,13 @@
     "test": "node --test tests/*.test.mjs",
     "start": "node src/server.mjs",
     "reset:data": "node scripts/reset-data.mjs",
-    "smoke:http": "node scripts/http-smoke.mjs"
+    "smoke:http": "node scripts/http-smoke.mjs",
+    "test:e2e": "playwright test",
+    "test:e2e:local": "LEXYOS_E2E_TARGET=local npm run test:e2e",
+    "test:e2e:staging": "LEXYOS_E2E_TARGET=staging LEXYOS_BASE_URL=http://37.27.49.209:5174 npm run test:e2e",
+    "test:e2e:live": "LEXYOS_E2E_TARGET=live LEXYOS_BASE_URL=http://37.27.49.209:5175 npm run test:e2e"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0"
   }
 }

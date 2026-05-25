@@ -205,7 +205,7 @@ function renderGates() {
 function renderAudit() {
   const scoped = state.auditEvents
     .filter((event) => !state.selectedMatter || !event.matterId || event.matterId === state.selectedMatter.id)
-    .slice(-12)
+    .slice(-24)
     .map((event) => ({ at: event.occurredAt ?? event.createdAt, action: event.action, matterId: event.matterId, metadata: event.metadata }));
   auditTrail.textContent = JSON.stringify(scoped, null, 2);
 }
