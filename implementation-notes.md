@@ -105,6 +105,12 @@ Unknown scalar fields are preserved into `baseline` so NocoDB/Airtable/Lawmatics
 - Rollback commands: staging `ssh root@37.27.49.209 'cd /opt/lexyos-staging && git reset --hard <previous_sha> && docker compose -p lexyos-staging up -d --build --force-recreate lexyos'`; live `ssh root@37.27.49.209 'cd /opt/lexyos-live && git reset --hard <previous_sha> && docker compose -p lexyos-live up -d --build --force-recreate lexyos'`.
 - DNS/proxy follow-up: no LexyOS-specific Caddy/DNS hostname was present during this pass; verified runtime is direct HTTP port routing. Existing LexySign/LexyFiling/Apiary containers were left running and were not recreated.
 
+## Seven UI shell — 2026-05-25
+- Product decision: the browser cockpit now uses a Mike-style matter command layout with Lexy/Seven design language: left matter nav, baseline/files panel, central document workspace, agent/API rail, cockpit controls, Skittles color tokens, glass surfaces, and iPad-responsive breakpoints.
+- Runtime decision: UI remains API-only. The shell renders API endpoint receipts, matter health metrics, selected-matter files, gates, tasks, audit, filing/corpus/service output, and Eva tracked-change context from same-origin endpoints; no static demo fallback was added.
+- RED receipt: `node --test tests/product-ui-workflows.test.mjs` failed on the new Seven shell/Skittles/API-receipts assertions before implementation.
+- GREEN receipts: `node --test tests/product-ui-workflows.test.mjs` passes 7/7, `npm test` passes 67/67, and `npm run test:e2e:local` passes 1/1 with proof screenshot `proof/matter-cockpit-local.png`.
+
 ## Remaining product gaps
 - Live Google Drive/no-code DB credentials are deployment-time env values, not OSS defaults. The storage provider boundary is implemented and tested; a hosted deployment still needs `LEXYOS_DRIVE_ROOT_FOLDER_ID` injected on Hetzner and a GOG-compatible Drive command surface available at runtime.
 

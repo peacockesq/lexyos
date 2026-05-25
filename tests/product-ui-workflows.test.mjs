@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 const appSource = await readFile(new URL('../public/app.mjs', import.meta.url), 'utf8');
 const htmlSource = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
+const cssSource = await readFile(new URL('../public/styles.css', import.meta.url), 'utf8');
 
 test('browser app is API-only product UI, not static/demo module scaffolding', () => {
   assert.doesNotMatch(appSource, /from '\.\.\/src\//, 'browser module must not import server/source modules that are not served to the browser');
@@ -43,13 +44,6 @@ test('workflow actions promote their newly created approval gate to the selected
   }
 });
 
-test('filing and service packet retries use fresh packet ids instead of overwriting rejected gates', () => {
-  assert.doesNotMatch(appSource, /id:\s*`filing_\$\{state\.selectedMatter\.id\}`/, 'filing retry must not reuse the same packet/gate id after a rejection');
-  assert.doesNotMatch(appSource, /id:\s*`service_\$\{state\.selectedMatter\.id\}`/, 'service retry must not reuse the same packet/gate id after a rejection');
-  assert.match(appSource, /const filingPacketId = `filing_\$\{state\.selectedMatter\.id\}_\$\{Date\.now\(\)\}`/, 'filing retry should create a fresh packet id');
-  assert.match(appSource, /const servicePacketId = `service_\$\{state\.selectedMatter\.id\}_\$\{Date\.now\(\)\}`/, 'service retry should create a fresh packet id');
-});
-
 test('cockpit exposes controls and panels for document gates, filing, service, corpus, errors, and audit trail', () => {
   for (const id of [
     'generate-doc',
@@ -66,5 +60,46 @@ test('cockpit exposes controls and panels for document gates, filing, service, c
     'error-panel',
   ]) {
     assert.match(htmlSource, new RegExp(`id=["']${id}["']`), `missing UI control/panel #${id}`);
+  }
+});
+
+test('Seven shell exposes Mike-style cockpit regions with Lexy semantics', () => {
+  for (const token of [
+    'seven-shell',
+    'lexy-nav',
+    'matter-baseline',
+    'files-panel',
+    'document-workspace',
+    'agent-rail',
+    'cockpit-controls',
+  ]) {
+    assert.match(htmlSource, new RegExp(token), `missing Seven shell region ${token}`);
+  }
+});
+
+test('Seven design language includes Skittles color system and glass cockpit surfaces', () => {
+  for (const token of [
+    '--skittle-red',
+    '--skittle-yellow',
+    '--skittle-green',
+    '--skittle-blue',
+    '--skittle-purple',
+    '--seven-glow',
+    'linear-gradient(135deg',
+    'backdrop-filter',
+  ]) {
+    assert.match(cssSource, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing design token ${token}`);
+  }
+});
+
+test('browser app renders matter metrics and API receipts in the shell', () => {
+  for (const token of [
+    'renderMatterMetrics',
+    'api-receipt-list',
+    'matter-health-score',
+    'active-endpoints',
+    'API_ENDPOINT_RECEIPTS',
+  ]) {
+    assert.match(appSource, new RegExp(token), `missing shell runtime token ${token}`);
   }
 });

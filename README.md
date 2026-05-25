@@ -160,7 +160,7 @@ curl -s http://127.0.0.1:5174/api/matters
 - `scripts/reset-data.mjs` — copies seed data into the active JSON data file (`data/lexyos.json` by default).
 - `src/schema.mjs` — Lexy canonical matter schema split into `lexy_core`, `qdro_pack`, and `peacock_ops` classifications.
 - `scripts/align_nocodb_schema.py` — idempotent NoCoDB schema alignment/backfill tool for making firm tables conform to Lexy titles.
-- `public/` — matter cockpit UI with SSO/session, filing, corpus, service, task/gate, Drive, document, and Eva panels. It now hydrates matters, files, and corpus answers from the local API with module-demo fallback only for development resilience.
+- `public/` — Seven-design matter cockpit UI with SSO/session, filing, corpus, service, task/gate, Drive, document, and Eva panels. It hydrates matters, files, workflow receipts, and corpus answers from the local API and surfaces API errors instead of using demo/static fallback data.
 - `docs/kanban-execution-plan.md` — full PRD feature coverage and review-gate plan mirrored into Hermes Kanban.
 - `config/integrations.json` — first-pass Peacock integration assumptions.
 

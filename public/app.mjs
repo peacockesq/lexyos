@@ -48,6 +48,9 @@ const errorPanel = $('#error-panel');
 const evaInstruction = $('#eva-instruction');
 const evaContext = $('#eva-context');
 const evaProposal = $('#eva-proposal');
+const matterHealthScore = $('#matter-health-score');
+const activeEndpoints = $('#active-endpoints');
+activeEndpoints.classList.add('api-receipt-list');
 
 async function boot() {
   bindControls();
@@ -98,6 +101,7 @@ function renderAll() {
   renderMatters();
   renderFiles();
   renderBaseline();
+  renderMatterMetrics();
   renderDocument();
   renderSession();
   renderTasks();
@@ -152,6 +156,20 @@ function renderBaseline() {
   folderStatus.textContent = state.selectedMatter?.driveFolderId || state.selectedMatter?.drive_folder_id
     ? `Drive folder: ${state.selectedMatter.driveFolderId ?? state.selectedMatter.drive_folder_id}`
     : 'No Drive folder ID on this matter; file list is scoped by matterId only.';
+}
+
+function renderMatterMetrics() {
+  const pendingGates = state.gates.filter((gate) => !state.selectedMatter || gate.matterId === state.selectedMatter.id).filter((gate) => gate.status === 'pending').length;
+  const openTasks = state.tasks.filter((task) => !state.selectedMatter || task.matterId === state.selectedMatter.id).filter((task) => !['done', 'approved', 'submitted'].includes(task.status)).length;
+  const health = Math.max(0, 100 - (pendingGates * 12) - (openTasks * 4));
+  const metrics = [
+    ['matter-health-score', `${health}%`, 'Matter health'],
+    ['files', String(state.files.length), 'API files'],
+    ['gates', String(pendingGates), 'Pending gates'],
+    ['active-endpoints', String(API_ENDPOINT_RECEIPTS.length), 'Live endpoints'],
+  ];
+  matterHealthScore.innerHTML = metrics.map(([id, value, label]) => `<div class="metric-card" data-metric="${escapeHtml(id)}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join('');
+  activeEndpoints.innerHTML = API_ENDPOINT_RECEIPTS.map((endpoint) => `<span class="api-receipt">${escapeHtml(endpoint)}</span>`).join('');
 }
 
 function renderDocument(artifact = null) {
