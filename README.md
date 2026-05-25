@@ -54,8 +54,20 @@ The Compose file defaults to the local storage adapter. Hosted deployments can s
 
 Workflows are included under `.github/workflows/`:
 
-- `ci.yml` runs Node tests, the HTTP smoke test, Docker build/container smoke, and a full Playwright matter-cockpit E2E run (`npm run test:e2e:local`) with proof screenshots/results uploaded as GitHub Actions artifacts.
+- `ci.yml` runs Node tests, the HTTP smoke test, Docker build/container smoke, and the Playwright matter cockpit E2E with proof artifact upload.
 - `deploy-hetzner.yml` is a manual `workflow_dispatch` deploy to lexy-hetzner-01 (`37.27.49.209`) using the existing VPS + Docker Compose path. It requires `HETZNER_SSH_KEY` and optionally `HETZNER_SSH_USER` as GitHub environment/repository configuration; it does not store secrets in the repo.
+
+## Playwright E2E proof
+
+Matter cockpit E2E (`tests/e2e/matter-cockpit.spec.mjs`) covers: app load, matter selection, Drive/local file listing, generated document artifact, approve/reject gate flow, filing packet submit lifecycle, service send/proof lifecycle, supported/refused Lexy Corpus answers, and audit trail assertions. The test intentionally uses semantic locators and JSON-state polling; no `waitForTimeout` hacks.
+
+Latest verification receipt (2026-05-25): local, staging, and live all passed after deploy to lexy-hetzner-01.
+
+```bash
+npm run test:e2e:local    # 1/1 passed; proof/matter-cockpit-local.png
+npm run test:e2e:staging  # 1/1 passed against http://37.27.49.209:5174; proof/matter-cockpit-staging.png
+npm run test:e2e:live     # 1/1 passed against http://37.27.49.209:5175; proof/matter-cockpit-live.png
+```
 
 ## Hetzner staging/live runtime
 
