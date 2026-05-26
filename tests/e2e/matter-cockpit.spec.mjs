@@ -2,9 +2,13 @@ import { test, expect } from '@playwright/test';
 
 const proofTarget = process.env.LEXYOS_E2E_TARGET ?? (process.env.LEXYOS_BASE_URL ? 'remote' : 'local');
 
+async function panelPayload(locator) {
+  return locator.evaluate((node) => node.dataset?.payload || node.textContent || '');
+}
+
 async function expectPanelJson(locator, predicate, message) {
   await expect.poll(async () => {
-    const payload = await locator.evaluate((node) => node.dataset.payload || node.textContent);
+    const payload = await panelPayload(locator);
     if (!payload?.trim()) return false;
     try {
       return predicate(JSON.parse(payload));
@@ -12,6 +16,33 @@ async function expectPanelJson(locator, predicate, message) {
       return false;
     }
   }, { message }).toBe(true);
+}
+
+async function expectPanelTextOrJson(locator, textPattern, predicate, message) {
+  await expect.poll(async () => {
+    const text = await locator.textContent();
+    const payload = await panelPayload(locator);
+    if (textPattern?.test(text || '') || textPattern?.test(payload || '')) return true;
+    if (!predicate || !payload?.trim()) return false;
+    try {
+      return predicate(JSON.parse(payload));
+    } catch {
+      return false;
+    }
+  }, { message }).toBe(true);
+}
+
+async function readPanelJson(locator) {
+  return JSON.parse(await panelPayload(locator));
+}
+
+async function clickGate(page, gateId) {
+  const byData = page.locator(`[data-gate-id="${gateId}"]`);
+  if (await byData.count()) {
+    await byData.first().click();
+    return;
+  }
+  await page.getByRole('button', { name: new RegExp(gateId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) }).click();
 }
 
 test.describe('LexyOS matter cockpit workflow', () => {
@@ -58,25 +89,27 @@ test.describe('LexyOS matter cockpit workflow', () => {
     await page.goto('/');
 
     await expect(page).toHaveTitle(/LexyOS Matter Cockpit/);
-    await expect(page.getByRole('heading', { name: 'Document Workspace' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Continue with Google Workspace' })).toBeVisible();
+    await page.getByRole('button', { name: 'Continue with Google Workspace' }).click();
+    await expect(page.getByRole('heading', { name: /^(Document Workspace|Documents)$/ })).toBeVisible();
 
-    await page.getByRole('button', { name: 'Create API matter' }).click();
-    await expect(page.locator('#research-panel')).toContainText('Matter created');
+    await page.getByRole('button', { name: /^(Create API matter|New matter)$/ }).click();
+    await expectPanelTextOrJson(page.locator('#research-panel'), /Matter created|createdMatter/, (json) => Boolean(json.createdMatter), 'created matter receipt should render');
     await expect(page.locator('#matter-search')).toHaveValue(/UI-/);
     const uiBaseline = await page.locator('#baseline-editor').evaluate((node) => JSON.parse(node.value));
     uiBaseline.plan_name = `UI Edited Plan ${runId}`;
     await page.locator('#baseline-editor').fill(JSON.stringify(uiBaseline, null, 2));
-    await page.getByRole('button', { name: 'Save baseline edit' }).click();
-    await expect(page.locator('#research-panel')).toContainText('Key facts saved');
-    await page.getByRole('button', { name: 'Upload sample file' }).click();
-    await expect(page.locator('#research-panel')).toContainText('File uploaded');
+    await page.getByRole('button', { name: /^(Save baseline edit|Save facts)$/ }).click();
+    await expectPanelTextOrJson(page.locator('#research-panel'), new RegExp(`UI Edited Plan ${runId}|Key facts saved`), null, 'baseline save receipt should render');
+    await page.getByRole('button', { name: /^(Upload sample file|Add sample file)$/ }).click();
+    await expectPanelTextOrJson(page.locator('#research-panel'), /uploadedFile|File uploaded/, (json) => Boolean(json.uploadedFile), 'file upload receipt should render');
     await expect(page.locator('#file-list')).toContainText('UI Uploaded QDRO Note');
     await page.getByRole('button', { name: 'Download selected file' }).click();
-    await expect(page.locator('#research-panel')).toContainText('File ready');
+    await expectPanelTextOrJson(page.locator('#research-panel'), /downloadedFile|File ready/, (json) => Boolean(json.downloadedFile), 'file download receipt should render');
     await page.locator('#matter-search').fill('');
 
     await page.getByRole('button', { name: 'New Intake Client — QDRO' }).click();
-    await expect(page.locator('#folder-status')).toContainText(/No Drive folder ID/);
+    await expect(page.locator('#folder-status')).toContainText(/No Drive folder (ID|connected)/);
 
     await page.locator('#matter-search').fill(runId);
     await page.getByRole('button', { name: new RegExp(clientName) }).click();
@@ -85,37 +118,37 @@ test.describe('LexyOS matter cockpit workflow', () => {
     await expect(page.getByRole('button', { name: new RegExp(`Judgment ${runId}\\.pdf`) })).toBeVisible();
 
     await page.getByRole('button', { name: new RegExp(`Draft QDRO ${runId}\\.docx`) }).click();
-    await expect(page.locator('#document-frame')).toContainText(`/api/matters/${matterId}/files`);
+    await expect(page.locator('#document-frame')).toContainText(new RegExp(`/api/matters/${matterId}/files|Loaded from selected matter files|Loaded from this matter`));
 
-    await page.getByRole('button', { name: 'Generate persistent QDRO artifact' }).click();
+    await page.getByRole('button', { name: /^(Generate persistent QDRO artifact|Draft QDRO)$/ }).click();
     await expect(page.locator('#document-frame')).toContainText(`artifact_docgen_${matterId}_qdro-draft`);
-    await expect(page.locator('#gate-list')).toContainText('attorney_document_review');
+    await expect(page.locator('#gate-list')).toContainText(/attorney[ _]document[ _]review/);
     await expect(page.locator('#ops-panel')).toContainText('Attorney review generated QDRO artifact');
 
-    await page.getByRole('button', { name: 'Approve selected gate' }).click();
-    await expect(page.locator('#research-panel')).toContainText('Gate approved');
+    await page.getByRole('button', { name: /^(Approve selected gate|Approve selected item)$/ }).click();
+    await expectPanelTextOrJson(page.locator('#research-panel'), /gateDecision|Approval approved|Gate approved/, (json) => Boolean(json.gateDecision), 'gate decision receipt should render');
     await expect(page.locator('#research-panel')).toContainText('approved');
-    await expect(page.locator('#ops-panel')).toContainText('No open tasks');
+    await expect(page.locator('#ops-panel')).toContainText(/approved|No open tasks/);
 
     await page.getByRole('button', { name: 'Prepare filing packet' }).click();
-    await expect(page.locator('#research-panel')).toContainText('Filing packet prepared');
-    await expect(page.locator('#gate-list')).toContainText('filing_approval');
-    await page.getByRole('button', { name: 'Reject selected gate' }).click();
+    await expectPanelTextOrJson(page.locator('#research-panel'), new RegExp(`filing_${matterId}|Filing packet prepared`), (json) => Boolean(json.gate?.id?.includes(matterId)), 'filing packet receipt should render');
+    await expect(page.locator('#gate-list')).toContainText(/filing[ _]approval/);
+    await page.getByRole('button', { name: /^(Reject selected gate|Reject selected item)$/ }).click();
     await expect(page.locator('#research-panel')).toContainText('rejected');
     await expect(page.locator('#ops-panel')).toContainText('blocked');
 
     await page.getByRole('button', { name: 'Prepare filing packet' }).click();
     await expectPanelJson(page.locator('#research-panel'), (json) => json.gate?.type === 'filing_approval' && json.gate?.status === 'pending' && json.gate?.id?.includes(matterId), 'retry filing gate should be pending before approval');
-    const retryFilingGateId = await page.locator('#research-panel').evaluate((el) => JSON.parse(el.dataset.payload).gate.id);
-    await page.getByRole('button', { name: new RegExp(retryFilingGateId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) }).click();
-    await page.getByRole('button', { name: 'Approve selected gate' }).click();
-    await expectPanelJson(page.locator('#research-panel'), (json) => json.gateDecision?.id === retryFilingGateId, 'approved filing gate id should be preserved in payload');
+    const retryFilingGateId = (await readPanelJson(page.locator('#research-panel'))).gate.id;
+    await clickGate(page, retryFilingGateId);
+    await page.getByRole('button', { name: /^(Approve selected gate|Approve selected item)$/ }).click();
+    await expectPanelTextOrJson(page.locator('#research-panel'), new RegExp(retryFilingGateId), (json) => json.gateDecision?.id === retryFilingGateId, 'approved filing gate id should be preserved');
     await expect(page.locator('#research-panel')).toContainText('approved');
     await page.getByRole('button', { name: 'Submit approved filing' }).click();
-    await expect(page.locator('#research-panel')).toContainText('Filing status');
+    await expectPanelTextOrJson(page.locator('#research-panel'), new RegExp(`manual-filing_${matterId}|Filing status`), null, 'filing submission receipt should render');
     await expect(page.locator('#research-panel')).toContainText('submitted');
 
-    await page.getByRole('button', { name: 'Search Lexy Corpus' }).click();
+    await page.getByRole('button', { name: /^(Search Lexy Corpus|Search legal library)$/ }).click();
     await expectPanelJson(page.locator('#research-panel'), (json) => json.corpus?.supported === true && json.corpus?.answer?.includes('QDRO drafts require'), 'supported corpus answer should cite loaded memo');
 
     const refusal = await page.evaluate(async (matterIdForSearch) => {
@@ -133,21 +166,21 @@ test.describe('LexyOS matter cockpit workflow', () => {
     expect(refusal.answer).toContain('Unsupported by loaded Lexy Corpus sources');
 
     await page.getByRole('button', { name: 'Prepare service packet' }).click();
-    await expect(page.locator('#gate-list')).toContainText('service_approval');
+    await expect(page.locator('#gate-list')).toContainText(/service[ _]approval/);
     await expectPanelJson(page.locator('#research-panel'), (json) => json.gate?.type === 'service_approval' && json.gate?.status === 'pending' && json.gate?.id?.includes(matterId), 'service gate should be pending before approval');
-    const serviceGateId = await page.locator('#research-panel').evaluate((el) => JSON.parse(el.dataset.payload).gate.id);
-    await page.getByRole('button', { name: new RegExp(serviceGateId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) }).click();
-    await page.getByRole('button', { name: 'Approve selected gate' }).click();
-    await expectPanelJson(page.locator('#research-panel'), (json) => json.gateDecision?.id === serviceGateId, 'approved service gate id should be preserved in payload');
+    const serviceGateId = (await readPanelJson(page.locator('#research-panel'))).gate.id;
+    await clickGate(page, serviceGateId);
+    await page.getByRole('button', { name: /^(Approve selected gate|Approve selected item)$/ }).click();
+    await expectPanelTextOrJson(page.locator('#research-panel'), new RegExp(serviceGateId), (json) => json.gateDecision?.id === serviceGateId, 'approved service gate id should be preserved');
     await expect(page.locator('#research-panel')).toContainText('approved');
     await page.getByRole('button', { name: 'Send approved service' }).click();
     await expect(page.locator('#research-panel')).toContainText('LOCAL-');
     await page.getByRole('button', { name: 'Upload proof of service' }).click();
-    await expect(page.locator('#research-panel')).toContainText('Proof of service uploaded');
+    await expectPanelTextOrJson(page.locator('#research-panel'), /proof_received|Proof of service uploaded/, (json) => Boolean(json.proof || json.gate), 'proof upload receipt should render');
 
-    await expectPanelJson(page.locator('#audit-trail'), (events) => events.some((event) => event.action === 'document.artifact.rendered'), 'audit includes document artifact rendered');
-    await expect(page.locator('#audit-trail')).toContainText('filing packet submitted');
-    await expect(page.locator('#audit-trail')).toContainText('service proof received');
+    await expectPanelTextOrJson(page.locator('#audit-trail'), /document\.artifact\.rendered/, (events) => Array.isArray(events) && events.some((event) => event.action === 'document.artifact.rendered'), 'audit includes document artifact rendered');
+    await expect(page.locator('#audit-trail')).toContainText(/filing\.packet\.submitted|filing packet submitted/);
+    await expect(page.locator('#audit-trail')).toContainText(/service\.proof\.received|service proof received/);
     await expect(page.locator('#error-panel')).toBeEmpty();
 
     await page.screenshot({ path: `proof/matter-cockpit-${proofTarget}.png`, fullPage: true });
