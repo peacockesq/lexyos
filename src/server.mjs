@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { canAccessMatter, createSession, requirePermission, LEXY_PERMISSIONS } from './auth.mjs';
+import { createSupabaseAuthConfig, createSupabaseSessionResolver, shouldUseSupabaseAuth } from './supabaseAuth.mjs';
 import { createMatterRepository } from './repository.mjs';
 import { createJsonFileStore, appendAuditEvent } from './persistence.mjs';
 import { createDocumentGenerationRequest, createDocumentTemplate, renderDocumentArtifact, requestDocumentApproval } from './documents.mjs';
@@ -28,17 +29,20 @@ export async function loadDefaultSeed(seedPath = defaultSeedPath) {
   }
 }
 
-export function createLexyProductServer({ dataPath = process.env.LEXYOS_DATA_PATH ?? defaultDataPath, seed = {}, publicDir = resolve(projectRoot, 'public'), sessionResolver = null, storageAdapter = null } = {}) {
-  const app = createLexyProductApp({ dataPath, seed, publicDir, sessionResolver, storageAdapter });
+export function createLexyProductServer({ dataPath = process.env.LEXYOS_DATA_PATH ?? defaultDataPath, seed = {}, publicDir = resolve(projectRoot, 'public'), sessionResolver = null, storageAdapter = null, auth = null } = {}) {
+  const app = createLexyProductApp({ dataPath, seed, publicDir, sessionResolver, storageAdapter, auth });
   const server = http.createServer((request, response) => app.handleHttp(request, response));
   return { server, app };
 }
 
-export function createLexyProductApp({ dataPath = defaultDataPath, seed = {}, publicDir = resolve(projectRoot, 'public'), sessionResolver = null, storageAdapter = null } = {}) {
+export function createLexyProductApp({ dataPath = defaultDataPath, seed = {}, publicDir = resolve(projectRoot, 'public'), sessionResolver = null, storageAdapter = null, auth = null } = {}) {
   const store = createJsonFileStore({ path: dataPath, seed });
   const repository = createMatterRepository({ store });
   const storage = storageAdapter ?? createLocalMatterStorage({ store });
-  const resolveSession = sessionResolver ?? createStoreBackedSessionResolver(store);
+  const authConfig = createSupabaseAuthConfig({ ...(auth ?? {}), tenants: seed.tenants ?? [] });
+  const resolveSession = sessionResolver ?? (shouldUseSupabaseAuth(authConfig)
+    ? createSupabaseSessionResolver({ ...authConfig, tenants: seed.tenants ?? [], fetchImpl: auth?.fetchImpl ?? globalThis.fetch })
+    : createStoreBackedSessionResolver(store));
 
   async function handleApi(method, pathname, body = {}, context = {}) {
     try {
@@ -53,6 +57,10 @@ export function createLexyProductApp({ dataPath = defaultDataPath, seed = {}, pu
 
     if (method === 'GET' && segments.length === 1 && segments[0] === 'health') {
       return ok({ status: 'ok', dataPath, product: 'LexyOS local backend' });
+    }
+
+    if (method === 'GET' && segments.length === 2 && segments[0] === 'auth' && segments[1] === 'config') {
+      return ok(publicAuthConfig(authConfig));
     }
 
     const session = context.session ?? await resolveSession({ ...context, store });
@@ -395,6 +403,16 @@ function sendText(response, status, body) {
 }
 
 function ok(body) { return { status: 200, body }; }
+function publicAuthConfig(authConfig) {
+  return {
+    mode: authConfig.mode,
+    supabaseUrl: authConfig.supabaseUrl,
+    anonKey: authConfig.anonKey,
+    redirectTo: authConfig.redirectTo,
+    providers: authConfig.providers,
+    products: authConfig.products,
+  };
+}
 function created(body) { return { status: 201, body }; }
 function notFound() { return { status: 404, body: { error: 'not_found' } }; }
 function errorResult(error) {
