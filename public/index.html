@@ -7,32 +7,52 @@
     <link rel="stylesheet" href="/public/styles.css" />
   </head>
   <body>
-    <main class="shell">
-      <aside class="matters-pane">
-        <div class="brand">LexyOS</div>
+    <main class="seven-shell" aria-label="LexyOS Seven matter shell">
+      <aside class="lexy-nav shell-card" aria-label="Matter navigation">
+        <div class="brand-stack">
+          <div class="brand-orb" aria-hidden="true"></div>
+          <div>
+            <div class="brand">LEXY <span class="slash">/</span> OS</div>
+            <div class="brand-subtitle">Matter Workspace</div>
+          </div>
+        </div>
         <label class="search-label" for="matter-search">Matter</label>
         <input id="matter-search" placeholder="Search client, plan, stage…" autocomplete="off" />
         <div id="matter-list" class="matter-list"></div>
-        <h2>Audit Trail</h2>
-        <pre id="audit-trail"></pre>
+        <section class="matter-baseline nav-audit" aria-label="Audit trail">
+          <h2>Audit Trail</h2>
+          <pre id="audit-trail"></pre>
+        </section>
       </aside>
 
-      <aside class="files-pane">
+      <aside class="files-panel shell-card" aria-label="Matter files and baseline">
+        <div class="panel-kicker">Matter baseline</div>
         <h2>Drive-scoped Files</h2>
         <div id="folder-status" class="folder-status"></div>
+        <div class="quick-actions" aria-label="Matter operations">
+          <button id="create-matter">Create API matter</button>
+          <button id="save-baseline">Save baseline edit</button>
+          <button id="upload-file">Upload sample file</button>
+          <button id="download-file">Download selected file</button>
+        </div>
         <div id="file-list" class="file-list"></div>
         <h2>Baseline Data</h2>
+        <textarea id="baseline-editor" class="baseline-editor" aria-label="Baseline JSON editor"></textarea>
         <div id="baseline-panel" class="baseline-panel"></div>
         <h2>Errors</h2>
         <pre id="error-panel" class="error-panel"></pre>
       </aside>
 
-      <section class="workspace-pane">
+      <section class="document-workspace shell-card" aria-label="Document workspace">
         <div class="workspace-header">
-          <h1>Document Workspace</h1>
+          <div>
+            <div class="panel-kicker">Live API cockpit</div>
+            <h1>Document Workspace</h1>
+          </div>
           <div class="pill">API-backed · persistent local JSON · attorney gates</div>
         </div>
-        <div class="action-grid">
+        <div id="matter-health-score" class="metric-strip" aria-label="Matter health metrics"></div>
+        <div class="cockpit-controls" aria-label="Cockpit controls">
           <button id="generate-doc">Generate persistent QDRO artifact</button>
           <button id="approve-gate">Approve selected gate</button>
           <button id="reject-gate">Reject selected gate</button>
@@ -46,9 +66,11 @@
         <div id="document-frame" class="document-frame"></div>
       </section>
 
-      <aside class="eva-pane">
+      <aside class="agent-rail shell-card" aria-label="Agent and API rail">
         <h2>Session / API</h2>
         <pre id="session-panel" class="proposal"></pre>
+        <h2>Active Endpoints</h2>
+        <div id="active-endpoints" class="api-receipt-list"></div>
         <h2>Tasks</h2>
         <pre id="ops-panel"></pre>
         <h2>Gates</h2>

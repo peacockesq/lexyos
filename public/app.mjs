@@ -37,6 +37,7 @@ const matterSearch = $('#matter-search');
 const matterList = $('#matter-list');
 const fileList = $('#file-list');
 const baselinePanel = $('#baseline-panel');
+const baselineEditor = $('#baseline-editor');
 const documentFrame = $('#document-frame');
 const folderStatus = $('#folder-status');
 const sessionPanel = $('#session-panel');
@@ -48,6 +49,9 @@ const errorPanel = $('#error-panel');
 const evaInstruction = $('#eva-instruction');
 const evaContext = $('#eva-context');
 const evaProposal = $('#eva-proposal');
+const matterHealthScore = $('#matter-health-score');
+const activeEndpoints = $('#active-endpoints');
+activeEndpoints.classList.add('api-receipt-list');
 
 async function boot() {
   bindControls();
@@ -59,6 +63,10 @@ function bindControls() {
     state.visibleMatters = searchLocalMatters(state.matters, event.target.value);
     renderMatters();
   });
+  $('#create-matter').addEventListener('click', withUiErrors(createMatterFromUi));
+  $('#save-baseline').addEventListener('click', withUiErrors(saveBaselineFromUi));
+  $('#upload-file').addEventListener('click', withUiErrors(uploadMatterFileFromUi));
+  $('#download-file').addEventListener('click', withUiErrors(downloadSelectedFile));
   $('#generate-doc').addEventListener('click', withUiErrors(generateDocumentArtifact));
   $('#approve-gate').addEventListener('click', withUiErrors(() => decideSelectedGate('approve')));
   $('#reject-gate').addEventListener('click', withUiErrors(() => decideSelectedGate('reject')));
@@ -98,6 +106,7 @@ function renderAll() {
   renderMatters();
   renderFiles();
   renderBaseline();
+  renderMatterMetrics();
   renderDocument();
   renderSession();
   renderTasks();
@@ -146,12 +155,27 @@ function renderFiles() {
 
 function renderBaseline() {
   const baseline = state.selectedMatter?.baseline ?? state.selectedMatter?.baseline_data ?? {};
+  baselineEditor.value = JSON.stringify(baseline, null, 2);
   baselinePanel.innerHTML = Object.entries(baseline)
     .map(([key, value]) => `<div class="baseline-row"><span>${escapeHtml(key)}</span><strong>${escapeHtml(String(value))}</strong></div>`)
     .join('') || '<div class="empty">No baseline facts persisted for this matter.</div>';
   folderStatus.textContent = state.selectedMatter?.driveFolderId || state.selectedMatter?.drive_folder_id
     ? `Drive folder: ${state.selectedMatter.driveFolderId ?? state.selectedMatter.drive_folder_id}`
     : 'No Drive folder ID on this matter; file list is scoped by matterId only.';
+}
+
+function renderMatterMetrics() {
+  const pendingGates = state.gates.filter((gate) => !state.selectedMatter || gate.matterId === state.selectedMatter.id).filter((gate) => gate.status === 'pending').length;
+  const openTasks = state.tasks.filter((task) => !state.selectedMatter || task.matterId === state.selectedMatter.id).filter((task) => !['done', 'approved', 'submitted'].includes(task.status)).length;
+  const health = Math.max(0, 100 - (pendingGates * 12) - (openTasks * 4));
+  const metrics = [
+    ['matter-health-score', `${health}%`, 'Matter health'],
+    ['files', String(state.files.length), 'API files'],
+    ['gates', String(pendingGates), 'Pending gates'],
+    ['active-endpoints', String(API_ENDPOINT_RECEIPTS.length), 'Live endpoints'],
+  ];
+  matterHealthScore.innerHTML = metrics.map(([id, value, label]) => `<div class="metric-card" data-metric="${escapeHtml(id)}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join('');
+  activeEndpoints.innerHTML = API_ENDPOINT_RECEIPTS.map((endpoint) => `<span class="api-receipt">${escapeHtml(endpoint)}</span>`).join('');
 }
 
 function renderDocument(artifact = null) {
@@ -212,6 +236,78 @@ function renderAudit() {
 
 function renderResearch(payload) {
   researchPanel.textContent = JSON.stringify(payload, null, 2);
+}
+
+async function createMatterFromUi() {
+  const stamp = Date.now();
+  const matterId = `UI-${stamp}`;
+  const matter = await apiJson('/api/matters', {
+    method: 'POST',
+    body: {
+      id: matterId,
+      matter_id: matterId,
+      tenantId: 'peacock',
+      client_display_name: `New Intake Client ${stamp}`,
+      matter_type: 'QDRO',
+      stage: 'ui-created',
+      baseline_data: {
+        plan_name: 'New 401(k) Plan',
+        case_number: matterId,
+        jurisdiction: 'CT',
+        participant: 'Participant Name',
+        alternate_payee: `New Intake Client ${stamp}`,
+      },
+    },
+  });
+  state.selectedMatter = matter;
+  matterSearch.value = matterId;
+  await refreshAll();
+  renderResearch({ createdMatter: matter });
+}
+
+async function saveBaselineFromUi() {
+  requireMatter();
+  const baseline = JSON.parse(baselineEditor.value || '{}');
+  const updated = await apiJson('/api/matters', {
+    method: 'POST',
+    body: {
+      ...state.selectedMatter,
+      baseline_data: baseline,
+      baseline,
+      updatedFrom: 'lexyos-ui-baseline-editor',
+    },
+  });
+  state.selectedMatter = updated;
+  await refreshAll();
+  renderResearch({ baselineSaved: updated });
+}
+
+async function uploadMatterFileFromUi() {
+  requireMatter();
+  const stamp = Date.now();
+  const file = await apiJson(`/api/matters/${encodeURIComponent(state.selectedMatter.id)}/files`, {
+    method: 'POST',
+    body: {
+      id: `ui_upload_${state.selectedMatter.id}_${stamp}`,
+      name: `UI Uploaded QDRO Note ${stamp}.txt`,
+      type: 'qdro',
+      mimeType: 'text/plain',
+      content: `Uploaded from LexyOS UI for ${displayName(state.selectedMatter)} at ${new Date(stamp).toISOString()}.`,
+    },
+  });
+  state.selectedDocument = file;
+  await refreshMatterScopedData();
+  renderAll();
+  renderDocument(file);
+  renderResearch({ uploadedFile: file });
+}
+
+async function downloadSelectedFile() {
+  requireMatter();
+  if (!state.selectedDocument?.id) throw new Error('Select a file before downloading.');
+  const result = await apiJson(`/api/matters/${encodeURIComponent(state.selectedMatter.id)}/files/download?fileId=${encodeURIComponent(state.selectedDocument.id)}`);
+  renderResearch({ downloadedFile: result });
+  renderDocument(result.file ?? state.selectedDocument);
 }
 
 async function generateDocumentArtifact() {

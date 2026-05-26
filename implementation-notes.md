@@ -105,6 +105,18 @@ Unknown scalar fields are preserved into `baseline` so NocoDB/Airtable/Lawmatics
 - Rollback commands: staging `ssh root@37.27.49.209 'cd /opt/lexyos-staging && git reset --hard <previous_sha> && docker compose -p lexyos-staging up -d --build --force-recreate lexyos'`; live `ssh root@37.27.49.209 'cd /opt/lexyos-live && git reset --hard <previous_sha> && docker compose -p lexyos-live up -d --build --force-recreate lexyos'`.
 - DNS/proxy follow-up: no LexyOS-specific Caddy/DNS hostname was present during this pass; verified runtime is direct HTTP port routing. Existing LexySign/LexyFiling/Apiary containers were left running and were not recreated.
 
+## Seven UI shell and full live-workflow UI — 2026-05-25
+- Product decision: the browser cockpit uses a Mike-style matter command layout with Lexy/Seven design language: left matter nav, baseline/files panel, central document workspace, agent/API rail, cockpit controls, Skittles color tokens, glass surfaces, and iPad-responsive breakpoints.
+- Runtime decision: UI remains API-only. The shell renders API endpoint receipts, matter health metrics, selected-matter files, gates, tasks, audit, filing/corpus/service output, and Eva tracked-change context from same-origin endpoints; no static demo fallback was added.
+- Full workflow controls now include matter creation, baseline JSON edit/save, local/Drive adapter upload, selected-file download, document artifact generation, corpus query, filing lifecycle, service lifecycle, audit trail, and cockpit task/gate controls.
+- RED/GREEN receipts: `tests/product-ui-workflows.test.mjs` now asserts the required endpoint/control/function coverage; `tests/product-backend.test.mjs` covers selected-matter file download; `tests/e2e/matter-cockpit.spec.mjs` drives create/edit/upload/download before the document/filing/service lifecycle.
+- Local receipts: `npm test` passes 67/67 and `npm run test:e2e:local` passes 1/1 with `proof/matter-cockpit-local.png`.
+
+## LexyOS Design System — Seven design lane 2026-05-25
+- Product decision: formalize LexyOS visual identity as warm, vibrant, and deliberately distinct from Mike's cool azure monoculture. Five-color "Skittles" palette (`--skittle-red`, `--skittle-yellow`, `--skittle-green`, `--skittle-blue`, `--skittle-purple`) plus semantic button usage for approve/reject/filing/action states.
+- Surface hierarchy: `--bg`/`#070910` root, radial glow background, glass shell cards, panel-2 internals, active endpoint chips, and a light document frame for legal text readability.
+- Design artifacts: `design-lane/LEXYOS-DESIGN-SYSTEM-MEMO.md` and `design-lane/lexyos-design-preview.html`.
+
 ## Remaining product gaps
 - Live Google Drive/no-code DB credentials are deployment-time env values, not OSS defaults. The storage provider boundary is implemented and tested; a hosted deployment still needs `LEXYOS_DRIVE_ROOT_FOLDER_ID` injected on Hetzner and a GOG-compatible Drive command surface available at runtime.
 

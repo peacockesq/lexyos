@@ -60,7 +60,22 @@ test.describe('LexyOS matter cockpit workflow', () => {
     await expect(page).toHaveTitle(/LexyOS Matter Cockpit/);
     await expect(page.getByRole('heading', { name: 'Document Workspace' })).toBeVisible();
 
-    await page.getByRole('button', { name: /New Intake Client/ }).click();
+    await page.getByRole('button', { name: 'Create API matter' }).click();
+    await expect(page.locator('#research-panel')).toContainText('createdMatter');
+    await expect(page.locator('#matter-search')).toHaveValue(/UI-/);
+    const uiBaseline = await page.locator('#baseline-editor').evaluate((node) => JSON.parse(node.value));
+    uiBaseline.plan_name = `UI Edited Plan ${runId}`;
+    await page.locator('#baseline-editor').fill(JSON.stringify(uiBaseline, null, 2));
+    await page.getByRole('button', { name: 'Save baseline edit' }).click();
+    await expect(page.locator('#research-panel')).toContainText(`UI Edited Plan ${runId}`);
+    await page.getByRole('button', { name: 'Upload sample file' }).click();
+    await expect(page.locator('#research-panel')).toContainText('uploadedFile');
+    await expect(page.locator('#file-list')).toContainText('UI Uploaded QDRO Note');
+    await page.getByRole('button', { name: 'Download selected file' }).click();
+    await expect(page.locator('#research-panel')).toContainText('downloadedFile');
+    await page.locator('#matter-search').fill('');
+
+    await page.getByRole('button', { name: 'New Intake Client — QDRO' }).click();
     await expect(page.locator('#folder-status')).toContainText(/No Drive folder ID/);
 
     await page.locator('#matter-search').fill(runId);

@@ -84,6 +84,15 @@ export function createLexyProductApp({ dataPath = defaultDataPath, seed = {}, pu
       await audit('file.upserted', matterId, { fileId: result.file?.id ?? body.id, provider: storage.provider ?? result.provider ?? 'unknown' });
       return created(result.file ?? result);
     }
+    if (method === 'GET' && segments.length === 4 && segments[0] === 'matters' && segments[2] === 'files' && segments[3] === 'download') {
+      const matterId = decodeURIComponent(segments[1]);
+      const matter = await requireMatter(matterId, session);
+      const fileId = body.fileId ?? context.query?.get?.('fileId') ?? context.query?.fileId;
+      const result = await storage.requestDownload({ matter, fileId });
+      if (!result.ok) return { status: 404, body: { error: result.reason ?? 'file_download_failed', provider: storage.provider ?? 'unknown' } };
+      await audit('file.downloaded', matterId, { fileId, provider: storage.provider ?? result.provider ?? 'unknown' });
+      return ok(result);
+    }
 
     if (method === 'GET' && segments.length === 1 && segments[0] === 'document-requests') {
       requirePermission(session, LEXY_PERMISSIONS.MATTER_READ);
@@ -300,7 +309,7 @@ export function createLexyProductApp({ dataPath = defaultDataPath, seed = {}, pu
       const url = new URL(request.url, 'http://127.0.0.1');
       if (url.pathname.startsWith('/api/')) {
         const body = await parseJsonBody(request);
-        return sendJson(response, await handleApi(request.method, url.pathname, body, { request, headers: request.headers }));
+        return sendJson(response, await handleApi(request.method, url.pathname, body, { request, headers: request.headers, query: url.searchParams }));
       }
       return serveStatic(publicDir, url.pathname, response);
     } catch (error) {
