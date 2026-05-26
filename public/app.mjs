@@ -59,6 +59,16 @@ async function boot() {
 }
 
 function bindControls() {
+  $('#mobile-menu-toggle')?.addEventListener('click', () => document.body.classList.toggle('mobile-menu-open'));
+  $('#mobile-search-toggle')?.addEventListener('click', () => {
+    document.body.classList.add('mobile-menu-open');
+    matterSearch.focus();
+  });
+  $('#eva-bubble')?.addEventListener('click', () => {
+    document.body.classList.toggle('eva-focus');
+    document.querySelector('.agent-rail')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    evaInstruction.focus();
+  });
   matterSearch.addEventListener('input', (event) => {
     state.visibleMatters = searchLocalMatters(state.matters, event.target.value);
     renderMatters();
@@ -199,12 +209,19 @@ function renderDocument(artifact = null) {
 }
 
 function renderSession() {
-  sessionPanel.textContent = JSON.stringify({ backend: '/api', persistence: 'data/lexyos.json', selectedMatterId: state.selectedMatter?.id ?? null }, null, 2);
+  sessionPanel.textContent = [
+    `Selected: ${state.selectedMatter ? displayName(state.selectedMatter) : 'No matter selected'}`,
+    'Backend: API connected',
+    'Storage: persistent local JSON',
+  ].join('\n');
 }
 
 function renderTasks() {
   const scoped = state.tasks.filter((task) => !state.selectedMatter || task.matterId === state.selectedMatter.id);
-  opsPanel.textContent = JSON.stringify(scoped.map(({ id, title, status, requiresGate, kind }) => ({ id, title, status, requiresGate, kind })), null, 2);
+  const open = scoped.filter((task) => !['done', 'approved', 'submitted'].includes(task.status));
+  opsPanel.textContent = open.length
+    ? open.slice(0, 6).map((task) => `• ${task.title ?? task.id} — ${labelStatus(task.status)}`).join('\n')
+    : 'No open tasks for this matter.';
 }
 
 function renderGates() {
@@ -231,11 +248,15 @@ function renderAudit() {
     .filter((event) => !state.selectedMatter || !event.matterId || event.matterId === state.selectedMatter.id)
     .slice(-24)
     .map((event) => ({ at: event.occurredAt ?? event.createdAt, action: event.action, matterId: event.matterId, metadata: event.metadata }));
-  auditTrail.textContent = JSON.stringify(scoped, null, 2);
+  auditTrail.dataset.payload = JSON.stringify(scoped);
+  auditTrail.textContent = scoped.length
+    ? scoped.slice(-15).reverse().map((event) => `• ${formatTime(event.at)} — ${humanizeAction(event.action)}`).join('\n')
+    : 'No recent activity yet.';
 }
 
 function renderResearch(payload) {
-  researchPanel.textContent = JSON.stringify(payload, null, 2);
+  researchPanel.dataset.payload = payload ? JSON.stringify(payload) : '';
+  researchPanel.textContent = summarizePayload(payload);
 }
 
 async function createMatterFromUi() {
@@ -446,11 +467,49 @@ function createEvaProposal() {
     proposedText: replacement,
     status: 'requires_attorney_review',
   };
-  evaProposal.textContent = JSON.stringify(proposal, null, 2);
+  evaProposal.textContent = [
+    'Tracked-change proposal ready for attorney review.',
+    `Matter: ${proposal.matterId ?? 'none selected'}`,
+    `Document: ${proposal.documentId ?? 'none selected'}`,
+    `Change: ${proposal.proposedText || 'No selected text available.'}`,
+  ].join('\n');
 }
 
 function renderEvaContext() {
   evaContext.textContent = JSON.stringify({ matter: state.selectedMatter, document: state.selectedDocument, selectedText: $('#selected-text')?.textContent ?? '' }, null, 2);
+}
+
+function summarizePayload(payload) {
+  if (!payload) return 'Ready. Actions update the matter and approval gates.';
+  if (payload.message) return payload.message;
+  if (payload.createdMatter) return `Matter created: ${displayName(payload.createdMatter)}.`;
+  if (payload.baselineSaved) return 'Key facts saved.';
+  if (payload.uploadedFile) return `File uploaded: ${payload.uploadedFile.name ?? payload.uploadedFile.id}.`;
+  if (payload.downloadedFile) return `File ready: ${payload.downloadedFile.file?.name ?? payload.downloadedFile.file?.id ?? 'selected file'}.`;
+  if (payload.documentRequest) return `Draft generated. Approval gate opened: ${payload.gate?.type ?? payload.gate?.action ?? 'review required'}.`;
+  if (payload.gateDecision) return `Gate ${labelStatus(payload.gateDecision.status)}: ${payload.gateDecision.type ?? payload.gateDecision.action}.`;
+  if (payload.packet && payload.validation) return `Filing packet prepared. Validation: ${payload.validation.ok ? 'ready' : 'missing items'}.`;
+  if (payload.packet && payload.status) return `Filing status: ${labelStatus(payload.status.status ?? payload.packet.status)}.`;
+  if (payload.corpus) return payload.corpus.supported ? `Corpus answer: ${payload.corpus.answer}` : 'Corpus refused: no cited support found.';
+  if (payload.serviceSent) return `Service sent. Tracking: ${payload.serviceSent.trackingId ?? payload.serviceSent.sent?.trackingId ?? 'recorded'}.`;
+  if (payload.proof) return 'Proof of service uploaded for review.';
+  if (payload.gate) return `Approval gate opened: ${payload.gate.type ?? payload.gate.action}.`;
+  return 'Action completed. Diagnostics are available below if needed.';
+}
+
+function humanizeAction(action) {
+  return String(action ?? 'activity').replaceAll('.', ' ').replaceAll('_', ' ');
+}
+
+function labelStatus(status) {
+  return String(status ?? 'pending').replaceAll('_', ' ');
+}
+
+function formatTime(value) {
+  if (!value) return 'now';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
 function filingDocuments() {

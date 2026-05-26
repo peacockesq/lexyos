@@ -7,6 +7,11 @@
     <link rel="stylesheet" href="/public/styles.css" />
   </head>
   <body>
+    <header class="mobile-topbar" aria-label="Mobile navigation">
+      <button id="mobile-menu-toggle" class="mobile-icon-button" aria-label="Open matter menu">☰</button>
+      <div class="mobile-brand">LEXY <span>/</span> OS</div>
+      <button id="mobile-search-toggle" class="mobile-icon-button" aria-label="Search matters">⌕</button>
+    </header>
     <main class="seven-shell" aria-label="LexyOS Seven matter shell">
       <aside class="lexy-nav shell-card" aria-label="Matter navigation">
         <div class="brand-stack">
@@ -19,15 +24,15 @@
         <label class="search-label" for="matter-search">Matter</label>
         <input id="matter-search" placeholder="Search client, plan, stage…" autocomplete="off" />
         <div id="matter-list" class="matter-list"></div>
-        <section class="matter-baseline nav-audit" aria-label="Audit trail">
-          <h2>Audit Trail</h2>
-          <pre id="audit-trail"></pre>
+        <section class="matter-baseline nav-audit" aria-label="Recent activity">
+          <h2>Recent Activity</h2>
+          <pre id="audit-trail" class="human-log"></pre>
         </section>
       </aside>
 
       <aside class="files-panel shell-card" aria-label="Matter files and baseline">
-        <div class="panel-kicker">Matter baseline</div>
-        <h2>Drive-scoped Files</h2>
+        <div class="panel-kicker">Supporting matter work</div>
+        <h2>Files + Key Facts</h2>
         <div id="folder-status" class="folder-status"></div>
         <div class="quick-actions" aria-label="Matter operations">
           <button id="create-matter">Create API matter</button>
@@ -36,11 +41,11 @@
           <button id="download-file">Download selected file</button>
         </div>
         <div id="file-list" class="file-list"></div>
-        <h2>Baseline Data</h2>
+        <h2>Key Facts</h2>
         <textarea id="baseline-editor" class="baseline-editor" aria-label="Baseline JSON editor"></textarea>
         <div id="baseline-panel" class="baseline-panel"></div>
-        <h2>Errors</h2>
-        <pre id="error-panel" class="error-panel"></pre>
+        <h2>Alerts</h2>
+        <pre id="error-panel" class="error-panel human-log"></pre>
       </aside>
 
       <section class="document-workspace shell-card" aria-label="Document workspace">
@@ -67,25 +72,29 @@
       </section>
 
       <aside class="agent-rail shell-card" aria-label="Agent and API rail">
-        <h2>Session / API</h2>
-        <pre id="session-panel" class="proposal"></pre>
-        <h2>Active Endpoints</h2>
-        <div id="active-endpoints" class="api-receipt-list"></div>
+        <h2>Automation Status</h2>
+        <pre id="session-panel" class="proposal human-log"></pre>
         <h2>Tasks</h2>
-        <pre id="ops-panel"></pre>
+        <pre id="ops-panel" class="human-log"></pre>
         <h2>Gates</h2>
         <div id="gate-list" class="matter-list"></div>
         <h2>Filing / Corpus / Service</h2>
-        <pre id="research-panel"></pre>
+        <pre id="research-panel" class="human-log"></pre>
         <h2>Eva / Research</h2>
         <textarea id="eva-instruction" placeholder="Ask Eva to review, draft, or propose a tracked edit…">Add survivor benefit language if missing.</textarea>
         <button id="eva-propose">Create tracked-change proposal</button>
-        <h3>Context sent to Eva</h3>
-        <pre id="eva-context"></pre>
+        <details class="diagnostics-drawer">
+          <summary>Developer diagnostics</summary>
+          <h3>Active Endpoints</h3>
+          <div id="active-endpoints" class="api-receipt-list"></div>
+          <h3>Context sent to Eva</h3>
+          <pre id="eva-context"></pre>
+        </details>
         <h3>Proposal</h3>
-        <pre id="eva-proposal" class="proposal"></pre>
+        <pre id="eva-proposal" class="proposal human-log"></pre>
       </aside>
     </main>
+    <button id="eva-bubble" class="eva-bubble" aria-label="Ask Eva">Eva</button>
     <script type="module" src="/public/app.mjs"></script>
   </body>
 </html>
