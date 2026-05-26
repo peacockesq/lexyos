@@ -40,8 +40,10 @@ export function createLexyProductApp({ dataPath = defaultDataPath, seed = {}, pu
   const repository = createMatterRepository({ store });
   const storage = storageAdapter ?? createLocalMatterStorage({ store });
   const authConfig = createSupabaseAuthConfig({ ...(auth ?? {}), tenants: seed.tenants ?? [] });
+  const envTenants = parseTenantsEnv(process.env.LEXYOS_AUTH_TENANTS_JSON);
+  const authTenants = auth?.tenants ?? (envTenants.length ? envTenants : seed.tenants ?? []);
   const resolveSession = sessionResolver ?? (shouldUseSupabaseAuth(authConfig)
-    ? createSupabaseSessionResolver({ ...authConfig, tenants: seed.tenants ?? [], fetchImpl: auth?.fetchImpl ?? globalThis.fetch })
+    ? createSupabaseSessionResolver({ ...authConfig, tenants: authTenants, fetchImpl: auth?.fetchImpl ?? globalThis.fetch })
     : createStoreBackedSessionResolver(store));
 
   async function handleApi(method, pathname, body = {}, context = {}) {
@@ -428,6 +430,16 @@ function httpError(status, code) {
   error.status = status;
   error.code = code;
   return error;
+}
+
+function parseTenantsEnv(raw) {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

@@ -99,6 +99,21 @@ test('LexyUI design language uses white brand kit with product-specific accents'
   assert.doesNotMatch(cssSource, /--seven-glow|backdrop-filter|conic-gradient/, 'neon/glass cockpit styling should not be present in LexyUI');
 });
 
+test('browser app wires Supabase SSO, callback token storage, logout, and LexyAlgo product links', () => {
+  for (const token of [
+    '/api/auth/config',
+    'startSso',
+    'completeOAuthCallbackFromUrl',
+    'lexyos-access-token',
+    'authorization: `Bearer ${accessToken}`',
+    'logout',
+    'product-links',
+    'LexyFile',
+  ]) {
+    assert.match(`${appSource}\n${htmlSource}`, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `missing SSO UI token ${token}`);
+  }
+});
+
 test('browser app renders matter metrics and API receipts in the shell', () => {
   for (const token of [
     'createMatterFromUi',

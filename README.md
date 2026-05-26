@@ -7,7 +7,7 @@ Repository target: `peacockesq/lexyos`.
 LexyOS can run in two modes:
 
 - **OSS/local mode** — Node + JSON persistence, local matter files, no external services required.
-- **Hosted product mode** — the same HTTP/UI surface can be deployed with Docker Compose and switched to deployment-time adapters such as Google Drive/GOG without committing Peacock-specific IDs or secrets.
+- **Hosted product mode** — the same HTTP/UI surface can be deployed with Docker Compose and switched to deployment-time adapters such as Google Drive/GOG and shared Supabase SSO without committing Peacock-specific IDs or secrets.
 
 
 No Mike/PIP code is copied. This is a separate shell designed around Peacock's actual matter workflow:
@@ -111,11 +111,29 @@ npm start
 
 `config/integrations.json` intentionally references env var names, not Peacock-specific Drive IDs. Hosted deployments inject `LEXYOS_DRIVE_ROOT_FOLDER_ID`; OSS/local clones do not need it.
 
+## Shared Supabase SSO
+
+LexyOS can run behind the shared LexyAlgo B2B Supabase identity layer. The browser fetches `GET /api/auth/config`, redirects Google Workspace or Microsoft 365 buttons to Supabase `/auth/v1/authorize`, stores the returned OAuth access token from `/auth/callback#access_token=...`, and sends protected API calls as `Authorization: Bearer <token>`. The backend validates the token against Supabase `/auth/v1/user`, maps it to an approved tenant/domain, and keeps all matter permissions tenant-bound.
+
+Required hosted env, supplied through the deployment manager and never committed:
+
+```bash
+LEXYOS_AUTH_MODE=supabase
+LEXYOS_SITE_URL=https://os.lexyalgo.com
+LEXYOS_SUPABASE_URL=https://<project>.supabase.co
+LEXYOS_SUPABASE_ANON_KEY=<public-anon-key>
+LEXYOS_AUTH_TENANTS_JSON='[{"id":"peacock","name":"Peacock Law Firm","allowedDomains":["williepeacock.com","peacockesq.com"]}]'
+LEXYOS_B2B_PRODUCTS_JSON='[{"id":"lexyfile","name":"LexyFile","url":"https://file.lexyalgo.com","role":"filing and file workspace"}]'
+```
+
+Supabase project settings must allow `https://os.lexyalgo.com/auth/callback` as a redirect URL and enable the Google and Microsoft/Azure providers with production OAuth client credentials.
+
 ## Local API surface
 
 All endpoints are local-only unless you deliberately bind the server differently. No external services are contacted by the default local provider.
 
 - `GET /api/health`
+- `GET /api/auth/config`
 - `GET /api/matters`, `POST /api/matters`
 - `GET /api/matters/:matterId/files`, `POST /api/matters/:matterId/files`, `GET /api/matters/:matterId/files/download?fileId=...`
 - `GET /api/document-requests`, `POST /api/document-requests`, `POST /api/document-requests/:requestId/artifacts`
@@ -140,6 +158,7 @@ curl -s http://127.0.0.1:5174/api/matters
 - `src/storage.mjs` — interchangeable local/mock/Google Drive matter storage adapters plus GOG Drive boundary.
 - `src/eva.mjs` — Eva context and tracked-change proposal primitives.
 - `src/auth.mjs` — tenant-aware B2B SSO/session/role/permission contract for unified LexyOS login.
+- `src/supabaseAuth.mjs` — Supabase SSO config, OAuth authorize URL builder, Bearer-token validation, tenant/domain mapping, and LexyAlgo B2B product link contract.
 - `src/oidc.mjs` — OIDC claim validation/session creation contract with issuer/audience/domain/member checks.
 - `src/persistence.mjs` — durable JSON/in-memory store facade, canonical PRD collections, and hash-chained audit events.
 - `src/audit.mjs` — immutable audit event log primitives.

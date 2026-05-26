@@ -6,95 +6,119 @@
     <title>LexyOS Matter Cockpit</title>
     <link rel="stylesheet" href="/public/styles.css" />
   </head>
-  <body>
-    <header class="mobile-topbar" aria-label="Mobile navigation">
-      <button id="mobile-menu-toggle" class="mobile-icon-button" aria-label="Open matter menu">☰</button>
-      <div class="mobile-brand">LEXY <span>/</span> OS</div>
-      <button id="mobile-search-toggle" class="mobile-icon-button" aria-label="Search matters">⌕</button>
+  <body class="login-required">
+    <section id="login-screen" class="login-screen" aria-label="LexyOS sign in">
+      <div class="login-card shell-card">
+        <div class="brand-stack login-brand">
+          <div class="brand-orb" aria-hidden="true"></div>
+          <div>
+            <div class="brand">LEXY <span class="slash">/</span> OS</div>
+            <div class="brand-subtitle">Secure matter workspace</div>
+          </div>
+        </div>
+        <p class="login-kicker">Sign in to continue</p>
+        <h1>Matter work, documents, approvals, and legal library in one place.</h1>
+        <p class="login-copy">Use your firm account. LexyOS uses the shared LexyAlgo Supabase identity layer so the same session can carry across B2B products including LexyFile.</p>
+        <div class="login-actions">
+          <button id="login-google" type="button">Continue with Google Workspace</button>
+          <button id="login-microsoft" type="button">Continue with Microsoft 365</button>
+        </div>
+        <div id="product-links" class="product-links" aria-label="Connected LexyAlgo products"></div>
+        <p class="login-footnote" id="login-footnote">SSO is loading. Local preview mode remains available only when Supabase auth is not configured.</p>
+      </div>
+    </section>
+
+    <header class="mobile-topbar" aria-label="Mobile matter controls">
+      <button id="mobile-menu-toggle" class="icon-button" type="button" aria-controls="matter-navigation" aria-expanded="false">☰</button>
+      <div class="mobile-title">
+        <strong>LEXY / OS</strong>
+        <span>Current matter</span>
+      </div>
+      <button id="mobile-eva-toggle" class="eva-chip" type="button" aria-controls="agent-rail" aria-expanded="false">Eva</button>
     </header>
-    <main class="seven-shell" aria-label="LexyOS Seven matter shell">
-      <aside class="lexy-nav shell-card" aria-label="Matter navigation">
+
+    <button id="eva-bubble" class="eva-bubble" type="button" aria-label="Open Eva chat">Eva</button>
+
+    <main id="app-shell" class="seven-shell" aria-label="LexyOS matter shell" hidden>
+      <aside id="matter-navigation" class="lexy-nav shell-card" aria-label="Matter navigation">
         <div class="brand-stack">
           <div class="brand-orb" aria-hidden="true"></div>
           <div>
             <div class="brand">LEXY <span class="slash">/</span> OS</div>
-            <div class="brand-subtitle">Matter Workspace</div>
+            <div class="brand-subtitle">Matter work</div>
           </div>
         </div>
         <label class="search-label" for="matter-search">Matter</label>
         <input id="matter-search" placeholder="Search client, plan, stage…" autocomplete="off" />
         <div id="matter-list" class="matter-list"></div>
-        <section class="matter-baseline nav-audit" aria-label="Recent activity">
-          <h2>Recent Activity</h2>
-          <pre id="audit-trail" class="human-log"></pre>
+        <section class="matter-baseline nav-audit" aria-label="Audit trail">
+          <h2>Recent activity</h2>
+          <pre id="audit-trail"></pre>
         </section>
       </aside>
 
       <aside class="files-panel shell-card" aria-label="Matter files and baseline">
-        <div class="panel-kicker">Supporting matter work</div>
-        <h2>Files + Key Facts</h2>
+        <div class="panel-kicker">Key facts</div>
+        <h2>Matter files</h2>
         <div id="folder-status" class="folder-status"></div>
         <div class="quick-actions" aria-label="Matter operations">
-          <button id="create-matter">Create API matter</button>
-          <button id="save-baseline">Save baseline edit</button>
-          <button id="upload-file">Upload sample file</button>
+          <button id="create-matter">New matter</button>
+          <button id="save-baseline">Save facts</button>
+          <button id="upload-file">Add sample file</button>
           <button id="download-file">Download selected file</button>
         </div>
         <div id="file-list" class="file-list"></div>
-        <h2>Key Facts</h2>
-        <textarea id="baseline-editor" class="baseline-editor" aria-label="Baseline JSON editor"></textarea>
+        <h2>Key facts</h2>
+        <textarea id="baseline-editor" class="baseline-editor" aria-label="Key facts editor"></textarea>
         <div id="baseline-panel" class="baseline-panel"></div>
-        <h2>Alerts</h2>
-        <pre id="error-panel" class="error-panel human-log"></pre>
+        <h2>Errors</h2>
+        <pre id="error-panel" class="error-panel"></pre>
       </aside>
 
       <section class="document-workspace shell-card" aria-label="Document workspace">
         <div class="workspace-header">
           <div>
-            <div class="panel-kicker">Live API cockpit</div>
-            <h1>Document Workspace</h1>
+            <div class="panel-kicker">Matter work</div>
+            <h1>Documents</h1>
           </div>
-          <div class="pill">API-backed · persistent local JSON · attorney gates</div>
+          <div class="pill">Matter-scoped · approvals required · persistent record</div>
         </div>
         <div id="matter-health-score" class="metric-strip" aria-label="Matter health metrics"></div>
         <div class="cockpit-controls" aria-label="Cockpit controls">
-          <button id="generate-doc">Generate persistent QDRO artifact</button>
-          <button id="approve-gate">Approve selected gate</button>
-          <button id="reject-gate">Reject selected gate</button>
+          <button id="generate-doc">Draft QDRO</button>
+          <button id="approve-gate">Approve selected item</button>
+          <button id="reject-gate">Reject selected item</button>
           <button id="create-filing">Prepare filing packet</button>
           <button id="submit-filing">Submit approved filing</button>
           <button id="prepare-service">Prepare service packet</button>
           <button id="send-service">Send approved service</button>
           <button id="upload-proof">Upload proof of service</button>
-          <button id="search-corpus">Search Lexy Corpus</button>
+          <button id="search-corpus">Search legal library</button>
         </div>
         <div id="document-frame" class="document-frame"></div>
       </section>
 
-      <aside class="agent-rail shell-card" aria-label="Agent and API rail">
-        <h2>Automation Status</h2>
-        <pre id="session-panel" class="proposal human-log"></pre>
+      <aside id="agent-rail" class="agent-rail shell-card" aria-label="Eva and matter activity">
+        <h2>Session</h2>
+        <button id="logout" class="secondary-action" type="button">Sign out</button>
+        <pre id="session-panel" class="proposal"></pre>
+        <h2>Advanced: active endpoints</h2>
+        <div id="active-endpoints" class="api-receipt-list"></div>
         <h2>Tasks</h2>
-        <pre id="ops-panel" class="human-log"></pre>
-        <h2>Gates</h2>
+        <pre id="ops-panel"></pre>
+        <h2>Approvals</h2>
         <div id="gate-list" class="matter-list"></div>
-        <h2>Filing / Corpus / Service</h2>
-        <pre id="research-panel" class="human-log"></pre>
+        <h2>Filing / legal library / service</h2>
+        <pre id="research-panel"></pre>
         <h2>Eva / Research</h2>
         <textarea id="eva-instruction" placeholder="Ask Eva to review, draft, or propose a tracked edit…">Add survivor benefit language if missing.</textarea>
         <button id="eva-propose">Create tracked-change proposal</button>
-        <details class="diagnostics-drawer">
-          <summary>Developer diagnostics</summary>
-          <h3>Active Endpoints</h3>
-          <div id="active-endpoints" class="api-receipt-list"></div>
-          <h3>Context sent to Eva</h3>
-          <pre id="eva-context"></pre>
-        </details>
+        <h3>Context sent to Eva</h3>
+        <pre id="eva-context"></pre>
         <h3>Proposal</h3>
-        <pre id="eva-proposal" class="proposal human-log"></pre>
+        <pre id="eva-proposal" class="proposal"></pre>
       </aside>
     </main>
-    <button id="eva-bubble" class="eva-bubble" aria-label="Ask Eva">Eva</button>
     <script type="module" src="/public/app.mjs"></script>
   </body>
 </html>

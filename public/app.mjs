@@ -25,6 +25,7 @@ const state = {
   auditEvents: [],
   filingPackets: [],
   servicePackets: [],
+  authConfig: null,
   selectedMatter: null,
   selectedDocument: null,
   selectedGate: null,
@@ -51,24 +52,109 @@ const evaContext = $('#eva-context');
 const evaProposal = $('#eva-proposal');
 const matterHealthScore = $('#matter-health-score');
 const activeEndpoints = $('#active-endpoints');
+const loginScreen = $('#login-screen');
+const loginFootnote = $('#login-footnote');
+const productLinks = $('#product-links');
+const appShell = $('#app-shell');
+const mobileMenuToggle = $('#mobile-menu-toggle');
+const mobileEvaToggle = $('#mobile-eva-toggle');
+const evaBubble = $('#eva-bubble');
 activeEndpoints.classList.add('api-receipt-list');
+let authConfigPromise = null;
 
 async function boot() {
+  authConfigPromise = hydrateAuthConfig();
+  bindLogin();
+  await authConfigPromise;
+  completeOAuthCallbackFromUrl();
+  bindShellControls();
   bindControls();
+  if (currentAccessToken() || currentSessionId()) await enterApp();
+}
+
+function bindLogin() {
+  $('#login-google').addEventListener('click', () => startSso('google'));
+  $('#login-microsoft').addEventListener('click', () => startSso('azure'));
+  $('#logout').addEventListener('click', logout);
+}
+
+async function hydrateAuthConfig() {
+  try {
+    state.authConfig = await fetch('/api/auth/config').then((response) => response.json());
+    renderProductLinks();
+    const mode = state.authConfig.mode === 'supabase' ? 'Supabase SSO enabled.' : 'Local preview session enabled.';
+    loginFootnote.textContent = `${mode} Google Workspace and Microsoft 365 route through the shared LexyAlgo identity layer when configured.`;
+  } catch (error) {
+    state.authConfig = { mode: 'local', products: [] };
+    loginFootnote.textContent = `Auth config unavailable: ${error.message}`;
+  }
+}
+
+function renderProductLinks() {
+  productLinks.innerHTML = (state.authConfig?.products ?? [])
+    .map((product) => `<a href="${escapeHtml(product.url)}" rel="noreferrer">${escapeHtml(product.name)}</a>`)
+    .join('');
+}
+
+async function startSso(provider) {
+  if (authConfigPromise) await authConfigPromise;
+  const providerConfig = state.authConfig?.providers?.[provider];
+  if (state.authConfig?.mode === 'supabase' && providerConfig?.authorizeUrl) {
+    window.location.assign(providerConfig.authorizeUrl);
+    return;
+  }
+  startPreviewSession(provider === 'azure' ? 'microsoft-365-preview' : 'google-workspace-preview');
+}
+
+function completeOAuthCallbackFromUrl() {
+  const params = new URLSearchParams(window.location.hash.slice(1));
+  const token = params.get('access_token');
+  const refreshToken = params.get('refresh_token');
+  if (!token) return;
+  localStorage.setItem('lexyos-access-token', token);
+  if (refreshToken) localStorage.setItem('lexyos-refresh-token', refreshToken);
+  localStorage.setItem('lexyos-session-provider', 'supabase-sso');
+  history.replaceState(null, document.title, window.location.pathname + window.location.search);
+}
+
+async function startPreviewSession(provider) {
+  localStorage.setItem('lexyos-session-id', 'local-dev-owner');
+  localStorage.setItem('lexyos-session-provider', provider);
+  await enterApp();
+}
+
+function logout() {
+  localStorage.removeItem('lexyos-session-id');
+  localStorage.removeItem('lexyos-access-token');
+  localStorage.removeItem('lexyos-refresh-token');
+  localStorage.removeItem('lexyos-session-provider');
+  window.location.assign('/');
+}
+
+async function enterApp() {
+  document.body.classList.remove('login-required');
+  loginScreen.hidden = true;
+  appShell.hidden = false;
   await refreshAll();
 }
 
+function bindShellControls() {
+  mobileMenuToggle.addEventListener('click', () => toggleShellPanel('nav-open', mobileMenuToggle));
+  mobileEvaToggle.addEventListener('click', () => toggleShellPanel('agent-open', mobileEvaToggle));
+  evaBubble.addEventListener('click', () => toggleShellPanel('agent-open', mobileEvaToggle));
+}
+
+function toggleShellPanel(className, control) {
+  const active = document.body.classList.toggle(className);
+  control?.setAttribute('aria-expanded', String(active));
+}
+
+function closeMobileNav() {
+  document.body.classList.remove('nav-open');
+  mobileMenuToggle?.setAttribute('aria-expanded', 'false');
+}
+
 function bindControls() {
-  $('#mobile-menu-toggle')?.addEventListener('click', () => document.body.classList.toggle('mobile-menu-open'));
-  $('#mobile-search-toggle')?.addEventListener('click', () => {
-    document.body.classList.add('mobile-menu-open');
-    matterSearch.focus();
-  });
-  $('#eva-bubble')?.addEventListener('click', () => {
-    document.body.classList.toggle('eva-focus');
-    document.querySelector('.agent-rail')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    evaInstruction.focus();
-  });
   matterSearch.addEventListener('input', (event) => {
     state.visibleMatters = searchLocalMatters(state.matters, event.target.value);
     renderMatters();
@@ -122,7 +208,7 @@ function renderAll() {
   renderTasks();
   renderGates();
   renderAudit();
-  renderResearch({ message: 'Ready. Actions call the local LexyOS API and refresh persisted state.' });
+  renderResearch({ message: 'Ready. Actions update the matter record and refresh the workspace.' });
   renderEvaContext();
 }
 
@@ -138,6 +224,7 @@ function renderMatters() {
       state.selectedGate = null;
       await refreshMatterScopedData();
       renderAll();
+      closeMobileNav();
     }));
     matterList.appendChild(button);
   }
@@ -146,7 +233,7 @@ function renderMatters() {
 function renderFiles() {
   fileList.innerHTML = '';
   if (!state.files.length) {
-    fileList.innerHTML = '<div class="empty">No API files found for this matter folder yet.</div>';
+    fileList.innerHTML = '<div class="empty">No files found for this matter yet.</div>';
     return;
   }
   for (const file of state.files) {
@@ -168,10 +255,10 @@ function renderBaseline() {
   baselineEditor.value = JSON.stringify(baseline, null, 2);
   baselinePanel.innerHTML = Object.entries(baseline)
     .map(([key, value]) => `<div class="baseline-row"><span>${escapeHtml(key)}</span><strong>${escapeHtml(String(value))}</strong></div>`)
-    .join('') || '<div class="empty">No baseline facts persisted for this matter.</div>';
+    .join('') || '<div class="empty">No key facts saved for this matter yet.</div>';
   folderStatus.textContent = state.selectedMatter?.driveFolderId || state.selectedMatter?.drive_folder_id
     ? `Drive folder: ${state.selectedMatter.driveFolderId ?? state.selectedMatter.drive_folder_id}`
-    : 'No Drive folder ID on this matter; file list is scoped by matterId only.';
+    : 'No Drive folder connected; files are scoped to this matter.';
 }
 
 function renderMatterMetrics() {
@@ -180,9 +267,9 @@ function renderMatterMetrics() {
   const health = Math.max(0, 100 - (pendingGates * 12) - (openTasks * 4));
   const metrics = [
     ['matter-health-score', `${health}%`, 'Matter health'],
-    ['files', String(state.files.length), 'API files'],
-    ['gates', String(pendingGates), 'Pending gates'],
-    ['active-endpoints', String(API_ENDPOINT_RECEIPTS.length), 'Live endpoints'],
+    ['files', String(state.files.length), 'Files'],
+    ['gates', String(pendingGates), 'Pending approvals'],
+    ['active-endpoints', String(API_ENDPOINT_RECEIPTS.length), 'Advanced'],
   ];
   matterHealthScore.innerHTML = metrics.map(([id, value, label]) => `<div class="metric-card" data-metric="${escapeHtml(id)}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join('');
   activeEndpoints.innerHTML = API_ENDPOINT_RECEIPTS.map((endpoint) => `<span class="api-receipt">${escapeHtml(endpoint)}</span>`).join('');
@@ -196,39 +283,33 @@ function renderDocument(artifact = null) {
   }
   const file = state.selectedDocument;
   if (!file) {
-    documentFrame.innerHTML = '<div class="empty big">Select a matter file or generate a persistent artifact.</div>';
+    documentFrame.innerHTML = '<div class="empty big">Select a matter file or draft a document.</div>';
     return;
   }
   documentFrame.innerHTML = `
     <div class="doc-preview">
       <div class="doc-title">${escapeHtml(file.name ?? file.id)}</div>
-      <p>Loaded from <strong>/api/matters/${escapeHtml(state.selectedMatter.id)}/files</strong>. No local demo data is used.</p>
+      <p>Loaded from this matter’s files.</p>
       <blockquote id="selected-text">${escapeHtml(file.content ?? 'The Alternate Payee shall receive fifty percent of the marital portion.')}</blockquote>
       <pre>${escapeHtml(JSON.stringify(file, null, 2))}</pre>
     </div>`;
 }
 
 function renderSession() {
-  sessionPanel.textContent = [
-    `Selected: ${state.selectedMatter ? displayName(state.selectedMatter) : 'No matter selected'}`,
-    'Backend: API connected',
-    'Storage: persistent local JSON',
-  ].join('\n');
+  const provider = localStorage.getItem('lexyos-session-provider') ?? 'preview';
+  sessionPanel.textContent = JSON.stringify({ provider, authMode: state.authConfig?.mode ?? 'unknown', backend: '/api', products: (state.authConfig?.products ?? []).map((product) => product.id), selectedMatterId: state.selectedMatter?.id ?? null }, null, 2);
 }
 
 function renderTasks() {
   const scoped = state.tasks.filter((task) => !state.selectedMatter || task.matterId === state.selectedMatter.id);
-  const open = scoped.filter((task) => !['done', 'approved', 'submitted'].includes(task.status));
-  opsPanel.textContent = open.length
-    ? open.slice(0, 6).map((task) => `• ${task.title ?? task.id} — ${labelStatus(task.status)}`).join('\n')
-    : 'No open tasks for this matter.';
+  opsPanel.textContent = JSON.stringify(scoped.map(({ id, title, status, requiresGate, kind }) => ({ id, title, status, requiresGate, kind })), null, 2);
 }
 
 function renderGates() {
   gateList.innerHTML = '';
   const scoped = state.gates.filter((gate) => !state.selectedMatter || gate.matterId === state.selectedMatter.id);
   if (!scoped.length) {
-    gateList.innerHTML = '<div class="empty">No gates yet. Generate a document, filing, or service packet.</div>';
+    gateList.innerHTML = '<div class="empty">No approvals yet. Draft a document, filing, or service packet.</div>';
     return;
   }
   for (const gate of scoped) {
@@ -248,15 +329,11 @@ function renderAudit() {
     .filter((event) => !state.selectedMatter || !event.matterId || event.matterId === state.selectedMatter.id)
     .slice(-24)
     .map((event) => ({ at: event.occurredAt ?? event.createdAt, action: event.action, matterId: event.matterId, metadata: event.metadata }));
-  auditTrail.dataset.payload = JSON.stringify(scoped);
-  auditTrail.textContent = scoped.length
-    ? scoped.slice(-15).reverse().map((event) => `• ${formatTime(event.at)} — ${humanizeAction(event.action)}`).join('\n')
-    : 'No recent activity yet.';
+  auditTrail.textContent = JSON.stringify(scoped, null, 2);
 }
 
 function renderResearch(payload) {
-  researchPanel.dataset.payload = payload ? JSON.stringify(payload) : '';
-  researchPanel.textContent = summarizePayload(payload);
+  researchPanel.textContent = JSON.stringify(payload, null, 2);
 }
 
 async function createMatterFromUi() {
@@ -467,49 +544,11 @@ function createEvaProposal() {
     proposedText: replacement,
     status: 'requires_attorney_review',
   };
-  evaProposal.textContent = [
-    'Tracked-change proposal ready for attorney review.',
-    `Matter: ${proposal.matterId ?? 'none selected'}`,
-    `Document: ${proposal.documentId ?? 'none selected'}`,
-    `Change: ${proposal.proposedText || 'No selected text available.'}`,
-  ].join('\n');
+  evaProposal.textContent = JSON.stringify(proposal, null, 2);
 }
 
 function renderEvaContext() {
   evaContext.textContent = JSON.stringify({ matter: state.selectedMatter, document: state.selectedDocument, selectedText: $('#selected-text')?.textContent ?? '' }, null, 2);
-}
-
-function summarizePayload(payload) {
-  if (!payload) return 'Ready. Actions update the matter and approval gates.';
-  if (payload.message) return payload.message;
-  if (payload.createdMatter) return `Matter created: ${displayName(payload.createdMatter)}.`;
-  if (payload.baselineSaved) return 'Key facts saved.';
-  if (payload.uploadedFile) return `File uploaded: ${payload.uploadedFile.name ?? payload.uploadedFile.id}.`;
-  if (payload.downloadedFile) return `File ready: ${payload.downloadedFile.file?.name ?? payload.downloadedFile.file?.id ?? 'selected file'}.`;
-  if (payload.documentRequest) return `Draft generated. Approval gate opened: ${payload.gate?.type ?? payload.gate?.action ?? 'review required'}.`;
-  if (payload.gateDecision) return `Gate ${labelStatus(payload.gateDecision.status)}: ${payload.gateDecision.type ?? payload.gateDecision.action}.`;
-  if (payload.packet && payload.validation) return `Filing packet prepared. Validation: ${payload.validation.ok ? 'ready' : 'missing items'}.`;
-  if (payload.packet && payload.status) return `Filing status: ${labelStatus(payload.status.status ?? payload.packet.status)}.`;
-  if (payload.corpus) return payload.corpus.supported ? `Corpus answer: ${payload.corpus.answer}` : 'Corpus refused: no cited support found.';
-  if (payload.serviceSent) return `Service sent. Tracking: ${payload.serviceSent.trackingId ?? payload.serviceSent.sent?.trackingId ?? 'recorded'}.`;
-  if (payload.proof) return 'Proof of service uploaded for review.';
-  if (payload.gate) return `Approval gate opened: ${payload.gate.type ?? payload.gate.action}.`;
-  return 'Action completed. Diagnostics are available below if needed.';
-}
-
-function humanizeAction(action) {
-  return String(action ?? 'activity').replaceAll('.', ' ').replaceAll('_', ' ');
-}
-
-function labelStatus(status) {
-  return String(status ?? 'pending').replaceAll('_', ' ');
-}
-
-function formatTime(value) {
-  if (!value) return 'now';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value);
-  return date.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
 function filingDocuments() {
@@ -547,11 +586,22 @@ function searchLocalMatters(matters, query) {
   return matters.filter((matter) => [matter.id, displayName(matter), matter.stage, JSON.stringify(matter.baseline ?? matter.baseline_data ?? {})].join(' ').toLowerCase().includes(q));
 }
 
+function currentSessionId() {
+  return localStorage.getItem('lexyos-session-id');
+}
+
+function currentAccessToken() {
+  return localStorage.getItem('lexyos-access-token');
+}
+
 async function apiJson(path, options = {}) {
-  const sessionId = localStorage.getItem('lexyos-session-id') || 'local-dev-owner';
+  const accessToken = currentAccessToken();
+  const sessionId = currentSessionId();
+  if (!accessToken && !sessionId) throw new Error('Sign in before calling LexyOS.');
+  const authHeaders = accessToken ? { authorization: `Bearer ${accessToken}` } : { 'x-lexyos-session-id': sessionId };
   const response = await fetch(path, {
     ...options,
-    headers: { 'content-type': 'application/json', 'x-lexyos-session-id': sessionId, ...(options.headers ?? {}) },
+    headers: { 'content-type': 'application/json', ...authHeaders, ...(options.headers ?? {}) },
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
   if (!response.ok) throw new Error(`LexyOS API failed: ${response.status} ${await response.text()}`);
