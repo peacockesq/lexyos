@@ -23,6 +23,11 @@
           <button id="login-google" type="button">Continue with Google Workspace</button>
           <button id="login-microsoft" type="button">Continue with Microsoft 365</button>
         </div>
+        <form id="password-login" class="password-login" aria-label="Email sign in">
+          <label>Email<input id="login-email" type="email" autocomplete="email" placeholder="you@firm.com" /></label>
+          <label>Password<input id="login-password" type="password" autocomplete="current-password" placeholder="Password" /></label>
+          <button type="submit">Sign in with email</button>
+        </form>
         <div id="product-links" class="product-links" aria-label="Connected LexyAlgo products"></div>
         <p class="login-footnote" id="login-footnote">SSO is loading. Local preview mode remains available only when Supabase auth is not configured.</p>
       </div>

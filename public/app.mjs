@@ -55,6 +55,9 @@ const activeEndpoints = $('#active-endpoints');
 const loginScreen = $('#login-screen');
 const loginFootnote = $('#login-footnote');
 const productLinks = $('#product-links');
+const passwordLogin = $('#password-login');
+const loginEmail = $('#login-email');
+const loginPassword = $('#login-password');
 const appShell = $('#app-shell');
 const mobileMenuToggle = $('#mobile-menu-toggle');
 const mobileEvaToggle = $('#mobile-eva-toggle');
@@ -75,6 +78,10 @@ async function boot() {
 function bindLogin() {
   $('#login-google').addEventListener('click', () => startSso('google'));
   $('#login-microsoft').addEventListener('click', () => startSso('azure'));
+  passwordLogin?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    signInWithPassword().catch(showError);
+  });
   $('#logout').addEventListener('click', logout);
 }
 
@@ -82,8 +89,9 @@ async function hydrateAuthConfig() {
   try {
     state.authConfig = await fetch('/api/auth/config').then((response) => response.json());
     renderProductLinks();
-    const mode = state.authConfig.mode === 'supabase' ? 'Supabase SSO enabled.' : 'Local preview session enabled.';
-    loginFootnote.textContent = `${mode} Google Workspace and Microsoft 365 route through the shared LexyAlgo identity layer when configured.`;
+    passwordLogin.hidden = state.authConfig.mode !== 'supabase';
+    const mode = state.authConfig.mode === 'supabase' ? 'Supabase auth enabled.' : 'Local preview session enabled.';
+    loginFootnote.textContent = `${mode} Google Workspace and Microsoft 365 route through Supabase when their OAuth providers are enabled; email sign-in is available for approved users.`;
   } catch (error) {
     state.authConfig = { mode: 'local', products: [] };
     loginFootnote.textContent = `Auth config unavailable: ${error.message}`;
@@ -111,10 +119,40 @@ function completeOAuthCallbackFromUrl() {
   const token = params.get('access_token');
   const refreshToken = params.get('refresh_token');
   if (!token) return;
+  persistSupabaseSession(token, refreshToken, 'supabase-sso');
+  history.replaceState(null, document.title, window.location.pathname + window.location.search);
+}
+
+async function signInWithPassword() {
+  if (authConfigPromise) await authConfigPromise;
+  if (state.authConfig?.mode !== 'supabase') return startPreviewSession('local-preview');
+  const email = loginEmail.value.trim();
+  const password = loginPassword.value;
+  if (!email || !password) {
+    showError(new Error('Email and password are required.'));
+    return;
+  }
+  const response = await fetch(`${state.authConfig.supabaseUrl}/auth/v1/token?grant_type=password`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: state.authConfig.anonKey,
+    },
+    body: JSON.stringify({ email, password }),
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok || !body.access_token) {
+    throw new Error(body.error_description || body.msg || body.error || 'Supabase password sign-in failed.');
+  }
+  persistSupabaseSession(body.access_token, body.refresh_token, 'supabase-password');
+  await enterApp();
+}
+
+function persistSupabaseSession(token, refreshToken, provider) {
+  localStorage.removeItem('lexyos-session-id');
   localStorage.setItem('lexyos-access-token', token);
   if (refreshToken) localStorage.setItem('lexyos-refresh-token', refreshToken);
-  localStorage.setItem('lexyos-session-provider', 'supabase-sso');
-  history.replaceState(null, document.title, window.location.pathname + window.location.search);
+  localStorage.setItem('lexyos-session-provider', provider);
 }
 
 async function startPreviewSession(provider) {
@@ -433,6 +471,7 @@ async function generateDocumentArtifact() {
     },
   });
   state.selectedGate = requestResult.gate;
+  state.selectedDocument = artifact ?? state.selectedDocument;
   await refreshMatterScopedData();
   renderAll();
   if (artifact) renderDocument(artifact);

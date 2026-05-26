@@ -6,8 +6,8 @@ const localBaseURL = `http://127.0.0.1:${port}`;
 
 export default defineConfig({
   testDir: './tests/e2e',
-  timeout: 60_000,
-  expect: { timeout: 10_000 },
+  timeout: isRemoteRun ? 120_000 : 60_000,
+  expect: { timeout: isRemoteRun ? 20_000 : 10_000 },
   fullyParallel: false,
   retries: process.env.CI ? 1 : 0,
   reporter: [

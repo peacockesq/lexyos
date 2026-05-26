@@ -45,12 +45,39 @@ async function clickGate(page, gateId) {
   await page.getByRole('button', { name: new RegExp(gateId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) }).click();
 }
 
+async function authHeadersForTarget(request) {
+  if (!process.env.LEXYOS_SMOKE_EMAIL || !process.env.LEXYOS_SMOKE_PASSWORD) {
+    return { 'x-lexyos-session-id': 'local-dev-owner' };
+  }
+  const configResponse = await request.get('/api/auth/config');
+  const config = await configResponse.json();
+  if (config.mode !== 'supabase') return { 'x-lexyos-session-id': 'local-dev-owner' };
+  const tokenResponse = await request.post(`${config.supabaseUrl}/auth/v1/token?grant_type=password`, {
+    headers: { apikey: config.anonKey },
+    data: { email: process.env.LEXYOS_SMOKE_EMAIL, password: process.env.LEXYOS_SMOKE_PASSWORD },
+  });
+  expect(tokenResponse).toBeOK();
+  const tokenBody = await tokenResponse.json();
+  return { Authorization: `Bearer ${tokenBody.access_token}` };
+}
+
+async function loginForTarget(page) {
+  if (process.env.LEXYOS_SMOKE_EMAIL && process.env.LEXYOS_SMOKE_PASSWORD && await page.locator('#login-email').isVisible().catch(() => false)) {
+    await page.locator('#login-email').fill(process.env.LEXYOS_SMOKE_EMAIL);
+    await page.locator('#login-password').fill(process.env.LEXYOS_SMOKE_PASSWORD);
+    await page.locator('#password-login button[type="submit"]').click();
+    return;
+  }
+  await expect(page.getByRole('button', { name: 'Continue with Google Workspace' })).toBeVisible();
+  await page.getByRole('button', { name: 'Continue with Google Workspace' }).click();
+}
+
 test.describe('LexyOS matter cockpit workflow', () => {
   test('exercises matter files, document gates, filing/service lifecycle, corpus refusal/support, and audit trail', async ({ page, request }) => {
     const runId = `E2E-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const matterId = `Q-${runId}`;
     const clientName = `Playwright Client ${runId}`;
-    const authHeaders = { 'x-lexyos-session-id': 'local-dev-owner' };
+    const authHeaders = await authHeadersForTarget(request);
 
     const matterResponse = await request.post('/api/matters', {
       headers: authHeaders,
@@ -89,8 +116,7 @@ test.describe('LexyOS matter cockpit workflow', () => {
     await page.goto('/');
 
     await expect(page).toHaveTitle(/LexyOS Matter Cockpit/);
-    await expect(page.getByRole('button', { name: 'Continue with Google Workspace' })).toBeVisible();
-    await page.getByRole('button', { name: 'Continue with Google Workspace' }).click();
+    await loginForTarget(page);
     await expect(page.getByRole('heading', { name: /^(Document Workspace|Documents)$/ })).toBeVisible();
 
     await page.getByRole('button', { name: /^(Create API matter|New matter)$/ }).click();
@@ -120,7 +146,7 @@ test.describe('LexyOS matter cockpit workflow', () => {
     await page.getByRole('button', { name: new RegExp(`Draft QDRO ${runId}\\.docx`) }).click();
     await expect(page.locator('#document-frame')).toContainText(new RegExp(`/api/matters/${matterId}/files|Loaded from selected matter files|Loaded from this matter`));
 
-    await page.getByRole('button', { name: /^(Generate persistent QDRO artifact|Draft QDRO)$/ }).click();
+    await page.locator('#generate-doc').click();
     await expect(page.locator('#document-frame')).toContainText(`artifact_docgen_${matterId}_qdro-draft`);
     await expect(page.locator('#gate-list')).toContainText(/attorney[ _]document[ _]review/);
     await expect(page.locator('#ops-panel')).toContainText('Attorney review generated QDRO artifact');
@@ -151,17 +177,17 @@ test.describe('LexyOS matter cockpit workflow', () => {
     await page.getByRole('button', { name: /^(Search Lexy Corpus|Search legal library)$/ }).click();
     await expectPanelJson(page.locator('#research-panel'), (json) => json.corpus?.supported === true && json.corpus?.answer?.includes('QDRO drafts require'), 'supported corpus answer should cite loaded memo');
 
-    const refusal = await page.evaluate(async (matterIdForSearch) => {
+    const refusal = await page.evaluate(async ({ matterIdForSearch, authHeadersForFetch }) => {
       const response = await fetch('/api/corpus/search', {
         method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-lexyos-session-id': 'local-dev-owner' },
+        headers: { 'content-type': 'application/json', ...authHeadersForFetch },
         body: JSON.stringify({
           query: 'alien spaceship transfer rules',
           scope: { matterId: matterIdForSearch, practiceArea: 'family_qdro', jurisdiction: 'CT' },
         }),
       });
       return response.json();
-    }, matterId);
+    }, { matterIdForSearch: matterId, authHeadersForFetch: authHeaders });
     expect(refusal.supported).toBe(false);
     expect(refusal.answer).toContain('Unsupported by loaded Lexy Corpus sources');
 

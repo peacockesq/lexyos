@@ -48,7 +48,10 @@ export function createSupabaseAuthConfig(input = {}) {
 export function createSupabaseSessionResolver({ supabaseUrl, anonKey, tenants = [], fetchImpl = globalThis.fetch } = {}) {
   const baseUrl = stripTrailingSlash(supabaseUrl ?? process.env.LEXYOS_SUPABASE_URL ?? process.env.SUPABASE_URL ?? '');
   const publicKey = anonKey ?? process.env.LEXYOS_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY ?? '';
-  const tenantRows = tenants.map((tenant) => createTenant(tenant));
+  const tenantRows = tenants.map((tenant) => createTenant({
+    ...tenant,
+    allowedDomains: tenant.allowedDomains ?? tenant.approvedDomains ?? [],
+  }));
   return async function resolveSupabaseSession({ headers = {}, request = null } = {}) {
     const token = bearerToken(headers, request);
     if (!token || !baseUrl || !publicKey) return null;
